@@ -34,9 +34,10 @@ extension PlaceMarker {
         return CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude + radius / max(metresPerDegree, 1))
     }
 
-    /// Halfway along the radius, where its length is labelled.
+    /// Out along the radius, clear of the place's glyph, where its length is labelled.
     var radiusLabelCoordinate: CLLocationCoordinate2D {
-        CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: (coordinate.longitude + edgeCoordinate.longitude) / 2)
+        let along = 0.68
+        return CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude + (edgeCoordinate.longitude - coordinate.longitude) * along)
     }
 }
 
