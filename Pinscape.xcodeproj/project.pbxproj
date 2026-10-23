@@ -16,6 +16,7 @@
 		19D682AC30E9BDAF29E65727 /* RegionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFEBFE4FC13CEF0D91F5F81 /* RegionStore.swift */; };
 		1BE0D41C1FF1382FCD581401 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11DA4038D7E15F9CA0C95E2F /* AppGroup.swift */; };
 		1CE892E1BEBD42365876B71E /* PinDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7497D287DA1BE384828CF7D5 /* PinDetailView.swift */; };
+		1D41B139791B95170F309C6B /* SmartSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = A021FEDC8F9D704D5A13E2C3 /* SmartSuggester.swift */; };
 		1F8910EDB71B085AEFE7CE68 /* DemoContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96FD43695A54A629D3F672DF /* DemoContent.swift */; };
 		24325F9A5E8BB622E580D0E5 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE3A2F5FEC10FAF523D646F /* AppModel.swift */; };
 		285695A79512D70729DA6D11 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CAB2EEE34B9BD91C957C1D /* NotificationManager.swift */; };
@@ -185,6 +186,7 @@
 		97AAE1F00244E6C7BCAB7FDB /* ShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
 		9A63D4C689CFBC989FCAF503 /* Pinscape.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Pinscape.entitlements; sourceTree = "<group>"; };
 		9EBE511F3570BCDD0F1BE4F7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A021FEDC8F9D704D5A13E2C3 /* SmartSuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartSuggester.swift; sourceTree = "<group>"; };
 		A13F7149BCDC5D95A291360F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A90E0E20175845F085C0FF76 /* Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glass.swift; sourceTree = "<group>"; };
 		AACE6300B8B11D10FAB0BA85 /* SharedIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedIntents.swift; sourceTree = "<group>"; };
@@ -277,6 +279,7 @@
 				5059F560F1BCACC8FEFCE705 /* PlaceResolver.swift */,
 				C4748C4B11F6B9BC64F9E360 /* PlaceSearch.swift */,
 				CA8F84C9123B9B197A27A574 /* ProStore.swift */,
+				A021FEDC8F9D704D5A13E2C3 /* SmartSuggester.swift */,
 				6E50651832270883138D941C /* SpeechCapture.swift */,
 				5EEAB83508575D56AE1F8131 /* StickerReader.swift */,
 			);
@@ -679,6 +682,7 @@
 				7345381B79A061E4AF2D9D00 /* RootView.swift in Sources */,
 				4CB5A58BB95DD3B339169FBA /* SettingsView.swift in Sources */,
 				799EAF339E82E212277C5AFD /* SharedIntents.swift in Sources */,
+				1D41B139791B95170F309C6B /* SmartSuggester.swift in Sources */,
 				FED43CAC7ACFC38CA2C6D51B /* SpeechCapture.swift in Sources */,
 				2E3AEB124175535F43127B0E /* StickerPinsView.swift in Sources */,
 				E7703AA216EB7E03235061B4 /* StickerReader.swift in Sources */,

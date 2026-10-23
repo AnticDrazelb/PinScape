@@ -112,7 +112,7 @@ final class CaptureModel {
         if !ambientChosen {
             storedAmbient = parsed.isAmbient
         }
-        suggestions = parsed.place == nil && !parsed.note.isEmpty ? PlaceSuggester.suggestions(for: parsed.note, market: Self.market) : []
+        suggestions = parsed.place == nil && !parsed.note.isEmpty ? SmartSuggester.suggestions(for: parsed.note, market: Self.market) : []
         resolve()
     }
 

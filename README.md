@@ -23,7 +23,7 @@ Pinscape lets you drop voice or text notes tied to real-world places, then surfa
 | **Private by design** | On-device speech recognition, an on-device encrypted store, no account, no cloud, no analytics. iOS tells Pinscape only that you arrived somewhere you pinned. |
 | **Pro** | Unlimited pins and places, place groups ("Supermarkets" = Tesco, Aldi or Lidl), NFC stickers for pantry and office, export to Notes. StoreKit 2 with a local StoreKit config for testing. |
 
-It uses the native frameworks Apple already built: **App Intents, ActivityKit (Live Activities), WidgetKit (including Control widgets), Core Location (`CLMonitor`), MapKit, Speech, AVFoundation, Vision, NaturalLanguage-style on-device matching, EventKit, Core NFC, StoreKit 2, SwiftData and TipKit.** On iOS 26 it adopts Liquid Glass. It runs on iOS 18 and later.
+It uses the native frameworks Apple already built: **App Intents, ActivityKit (Live Activities), WidgetKit (including Control widgets), Core Location (`CLMonitor`), MapKit, Speech, AVFoundation, Vision, NaturalLanguage (on-device word embeddings), EventKit, Core NFC, StoreKit 2, SwiftData and TipKit.** On iOS 26 it adopts Liquid Glass. It runs on iOS 18 and later.
 
 ## Screenshots
 

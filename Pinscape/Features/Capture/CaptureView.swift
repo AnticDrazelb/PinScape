@@ -357,14 +357,14 @@ struct MicOrb: View {
             ZStack {
                 ForEach(0..<3) { ring in
                     Circle()
-                        .stroke(Theme.accent.opacity(listening ? 0.45 - Double(ring) * 0.12 : 0), lineWidth: 1.5)
-                        .scaleEffect(listening ? 1.12 + Double(ring) * 0.22 + level * 0.35 : 0.9)
+                        .stroke(Theme.accent.opacity(ringOpacity(ring)), lineWidth: 1.5)
+                        .scaleEffect(ringScale(ring))
                         .animation(.easeOut(duration: 0.18), value: level)
                 }
                 Circle()
                     .fill(Theme.gradient)
-                    .shadow(color: Theme.accent.opacity(0.6), radius: listening ? 26 + level * 20 : 16)
-                    .scaleEffect(listening ? 1 + level * 0.08 : 1)
+                    .shadow(color: Theme.accent.opacity(0.6), radius: glowRadius)
+                    .scaleEffect(coreScale)
                     .animation(.easeOut(duration: 0.15), value: level)
                 Circle()
                     .fill(LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .top, endPoint: .center))
@@ -379,6 +379,23 @@ struct MicOrb: View {
         .buttonStyle(.plain)
         .animation(.spring(duration: 0.4, bounce: 0.35), value: listening)
         .accessibilityLabel(listening ? "Stop listening" : "Speak")
+    }
+
+    private var glowRadius: CGFloat {
+        listening ? CGFloat(26 + level * 20) : 16
+    }
+
+    private var coreScale: CGFloat {
+        listening ? CGFloat(1 + level * 0.08) : 1
+    }
+
+    private func ringOpacity(_ ring: Int) -> Double {
+        listening ? 0.45 - Double(ring) * 0.12 : 0
+    }
+
+    private func ringScale(_ ring: Int) -> CGFloat {
+        guard listening else { return 0.9 }
+        return CGFloat(1.12 + Double(ring) * 0.22 + level * 0.35)
     }
 }
 

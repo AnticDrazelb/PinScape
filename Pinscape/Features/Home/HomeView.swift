@@ -167,7 +167,8 @@ struct HomeView: View {
             .animation(.snappy, value: pins.count)
             .task {
                 let status = await NotificationManager.authorizationStatus()
-                notificationsAllowed = PinStore.isDemo || status == .authorized || status == .provisional || status == .ephemeral
+                let allowed: [UNAuthorizationStatus] = [.authorized, .provisional, .ephemeral]
+                notificationsAllowed = PinStore.isDemo || allowed.contains(status)
             }
         }
     }

@@ -18,7 +18,7 @@ struct PlacePickerView: View {
     @State private var findingHere = false
 
     private var suggestions: [PlaceSuggestion] {
-        PlaceSuggester.suggestions(for: note, market: CaptureModel.market, limit: 5)
+        SmartSuggester.suggestions(for: note, market: CaptureModel.market, limit: 5)
     }
 
     private var brands: [Brand] {

@@ -23,7 +23,7 @@ struct PinLiveActivity: Widget {
                         Text(context.attributes.placeName)
                             .font(.headline)
                             .lineLimit(1)
-                        Text(context.state.remaining == 0 ? "All done" : "\(context.state.remaining) to remember")
+                        Text(remainingText(context.state.remaining))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -62,6 +62,10 @@ struct PinActivityLockScreen: View {
     let attributes: PinActivityAttributes
     let state: PinActivityAttributes.ContentState
 
+    private var leftText: String {
+        state.remaining == 0 ? "Done" : "\(state.remaining) left"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
@@ -77,7 +81,7 @@ struct PinActivityLockScreen: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                Text(state.remaining == 0 ? "Done" : "\(state.remaining) left")
+                Text(leftText)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color(hex: attributes.colorHex))
             }
@@ -111,4 +115,8 @@ struct PinActivityRow: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+private func remainingText(_ remaining: Int) -> String {
+    remaining == 0 ? "All done" : "\(remaining) to remember"
 }

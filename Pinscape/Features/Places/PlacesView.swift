@@ -44,7 +44,7 @@ struct PlacesView: View {
                 } header: {
                     Text("Places")
                 } footer: {
-                    Text("Say “near gym” or “at Mum's” and Pinscape knows where you mean.\(store.isPro ? "" : " Free includes \(PinscapePlan.freeSavedPlaces) place.")")
+                    Text(placesFooter)
                 }
 
                 Section {
@@ -104,6 +104,11 @@ struct PlacesView: View {
                 PaywallView(reason: reason)
             }
         }
+    }
+
+    private var placesFooter: String {
+        let base = "Say “near gym” or “at Mum's” and Pinscape knows where you mean."
+        return store.isPro ? base : base + " Free includes \(PinscapePlan.freeSavedPlaces) place."
     }
 
     private func count(for place: SavedPlace) -> Int {

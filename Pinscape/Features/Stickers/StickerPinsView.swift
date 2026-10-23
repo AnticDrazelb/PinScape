@@ -19,6 +19,11 @@ struct StickerPinsView: View {
         pins.filter { $0.place.savedPlaceID == stickerID }
     }
 
+    private var waitingText: String {
+        let count = stickerPins.count
+        return count == 0 ? "Nothing left here yet." : "\(count) waiting here"
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -28,7 +33,7 @@ struct StickerPinsView: View {
                             PlaceGlyph(symbol: sticker.symbol, colorHex: sticker.colorHex, size: 64)
                             Text(sticker.name)
                                 .font(Theme.roundedTitle(.title2))
-                            Text(stickerPins.isEmpty ? "Nothing left here yet." : "\(stickerPins.count) waiting here")
+                            Text(waitingText)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }

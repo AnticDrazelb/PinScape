@@ -84,7 +84,7 @@ struct PinDetailView: View {
                     Label(sourceName(pin), systemImage: pin.capturedByVoice ? "waveform" : "keyboard")
                 }
                 LabeledContent("Surfaced") {
-                    Text(pin.surfaceCount == 0 ? "Not yet" : "\(pin.surfaceCount) \(pin.surfaceCount == 1 ? "time" : "times")")
+                    Text(Self.timesText(pin.surfaceCount))
                 }
                 if let last = pin.lastSurfacedAt {
                     LabeledContent("Last time") {
@@ -172,6 +172,11 @@ struct PinDetailView: View {
             .filter { target.matches(regionKey: $0.candidate.key) }
             .prefix(6)
             .map { PlaceMarker($0.candidate, id: $0.id) }
+    }
+
+    private static func timesText(_ count: Int) -> String {
+        if count == 0 { return "Not yet" }
+        return count == 1 ? "Once" : "\(count) times"
     }
 
     private func sourceName(_ pin: Pin) -> String {

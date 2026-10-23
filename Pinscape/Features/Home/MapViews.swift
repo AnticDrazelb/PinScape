@@ -57,7 +57,7 @@ struct HomeMapCard: View {
                 Circle()
                     .fill(watching > 0 ? Color.green : Color.secondary)
                     .frame(width: 7, height: 7)
-                Text(watching > 0 ? "Watching \(watching) \(watching == 1 ? "place" : "places") nearby" : "Drop a pin to start")
+                Text(statusText)
                     .font(.caption.weight(.semibold))
             }
             .padding(.horizontal, 11)
@@ -78,6 +78,14 @@ struct HomeMapCard: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Map of \(markers.count) places with pins near you")
         .accessibilityAddTraits(.isButton)
+    }
+
+    private var statusText: String {
+        switch watching {
+        case 0: return "Drop a pin to start"
+        case 1: return "Watching 1 place nearby"
+        default: return "Watching \(watching) places nearby"
+        }
     }
 
     private func frame() {
@@ -174,7 +182,7 @@ private struct MarkerPinsCard: View {
                 Text(marker.title)
                     .font(.headline)
                 Spacer()
-                Text("\(pins.count) \(pins.count == 1 ? "pin" : "pins")")
+                Text(pins.count == 1 ? "1 pin" : "\(pins.count) pins")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }

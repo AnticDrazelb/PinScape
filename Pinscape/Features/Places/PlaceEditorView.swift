@@ -98,6 +98,17 @@ struct PlaceEditorView: View {
         }
     }
 
+    private var locationFooter: String {
+        let place = name.isEmpty ? "here" : name
+        let near = PlaceTarget.formatDistance(PlaceTarget.nearRadius)
+        return "Tap the map to move it. “Near \(place)” always uses at least \(near)."
+    }
+
+    private var groupFooter: String {
+        let group = name.isEmpty ? "this group" : name
+        return "A pin for “\(group)” surfaces at whichever of these you walk into first."
+    }
+
     private var namePrompt: String {
         switch kind {
         case .place: "Gym, Mum's house, Office"
@@ -180,7 +191,7 @@ struct PlaceEditorView: View {
         } header: {
             Text("Location")
         } footer: {
-            Text("Tap the map to move it. “Near \(name.isEmpty ? "here" : name)” always uses at least \(PlaceTarget.formatDistance(PlaceTarget.nearRadius)).")
+            Text(locationFooter)
         }
 
         Section {
@@ -229,7 +240,7 @@ struct PlaceEditorView: View {
         } header: {
             Text("Shops in this group")
         } footer: {
-            Text("A pin for “\(name.isEmpty ? "this group" : name)” surfaces at whichever of these you walk into first.")
+            Text(groupFooter)
         }
     }
 
