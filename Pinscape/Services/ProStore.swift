@@ -67,7 +67,7 @@ final class ProStore {
                 stickers = true
             }
         }
-        isPro = pro || PinStore.isDemo
+        isPro = pro || PinStore.isDemoPro
         hasStickerPack = stickers
         AppGroup.defaults.set(pro, forKey: SharedKeys.isPro)
         AppGroup.defaults.set(stickers, forKey: SharedKeys.hasStickerPack)

@@ -7,6 +7,8 @@ import WidgetKit
 /// and readable after first unlock, which lets a geofence wake Pinscape while the phone is locked.
 enum PinStore {
     static let isDemo: Bool = ProcessInfo.processInfo.arguments.contains("-PinscapeDemo")
+    /// Demo data as a Pro user, unless launched with `-PinscapeFree YES` to show the free tier.
+    static let isDemoPro: Bool = isDemo && !ProcessInfo.processInfo.arguments.contains("-PinscapeFree")
 
     static let container: ModelContainer = makeContainer()
 

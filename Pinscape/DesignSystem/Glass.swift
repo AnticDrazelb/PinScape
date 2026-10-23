@@ -108,12 +108,15 @@ struct Badge: View {
 }
 
 extension Double {
-    /// "350 m", "1.2 km"
+    /// "Nearby", "350 m", "1.2 km" — or feet and miles where people use them.
     var distanceText: String {
-        let formatter = MeasurementFormatter()
-        formatter.unitOptions = .naturalScale
-        formatter.numberFormatter.maximumFractionDigits = self < 1_000 ? 0 : 1
-        let rounded = self < 1_000 ? (self / 10).rounded() * 10 : self
-        return formatter.string(from: Measurement(value: rounded, unit: UnitLength.meters))
+        if self < 40 { return "Nearby" }
+        if Locale.current.measurementSystem == .us {
+            let feet = self * 3.28084
+            if feet < 1_000 { return "\(Int((feet / 50).rounded() * 50)) ft" }
+            return String(format: "%.1f mi", self / 1_609.34)
+        }
+        if self < 1_000 { return "\(Int((self / 10).rounded() * 10)) m" }
+        return String(format: "%.1f km", self / 1_000)
     }
 }

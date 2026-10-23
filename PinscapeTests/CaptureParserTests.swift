@@ -21,6 +21,7 @@ final class CaptureParserTests: XCTestCase {
         assertParse("Tesco, batteries", note: "Batteries", place: "Tesco")
         assertParse("Tesco, batteries.", note: "Batteries", place: "Tesco")
         assertParse("B&Q: wood stain, the dark one", note: "Wood stain, the dark one", place: "B&Q")
+        assertParse("B&Q, wood stain — the dark one", note: "Wood stain — the dark one", place: "B&Q")
         assertParse("B and Q - wood stain the dark one", note: "Wood stain the dark one", place: "B&Q")
         assertParse("Sainsbury's, birthday candles", note: "Birthday candles", place: "Sainsbury's")
         assertParse("Curry's: ask about the TV deal", note: "Ask about the TV deal", place: "Currys")
@@ -28,6 +29,7 @@ final class CaptureParserTests: XCTestCase {
 
     func testThoughtThenPlace() {
         assertParse("wood stain the dark one at B&Q", note: "Wood stain the dark one", place: "B&Q")
+        assertParse("wood stain — the dark one at B&Q", note: "Wood stain — the dark one", place: "B&Q")
         assertParse("buy batteries at Tesco", note: "Buy batteries", place: "Tesco")
         assertParse("batteries, Tesco", note: "Batteries", place: "Tesco")
         assertParse("pick up the parcel at the post office", note: "Pick up the parcel", place: "Post office", match: .category(.postOffice))

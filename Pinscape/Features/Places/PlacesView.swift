@@ -34,6 +34,7 @@ struct PlacesView: View {
                 Section {
                     ForEach(items(.place)) { place in
                         Button { editing = .edit(place) } label: { PlaceRow(place: place, pinCount: count(for: place)) }
+                            .foregroundStyle(.primary)
                     }
                     .onDelete { delete(items(.place), at: $0) }
                     Button {
@@ -50,6 +51,7 @@ struct PlacesView: View {
                 Section {
                     ForEach(items(.group)) { group in
                         Button { editing = .edit(group) } label: { PlaceRow(place: group, pinCount: count(for: group)) }
+                            .foregroundStyle(.primary)
                     }
                     .onDelete { delete(items(.group), at: $0) }
                     Button {
@@ -69,6 +71,7 @@ struct PlacesView: View {
                 Section {
                     ForEach(items(.sticker)) { sticker in
                         Button { editing = .edit(sticker) } label: { PlaceRow(place: sticker, pinCount: count(for: sticker)) }
+                            .foregroundStyle(.primary)
                     }
                     .onDelete { delete(items(.sticker), at: $0) }
                     Button {

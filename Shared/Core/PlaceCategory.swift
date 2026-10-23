@@ -111,7 +111,7 @@ enum PlaceCategory: String, CaseIterable, Codable, Sendable {
         case .pets: "pawprint.fill"
         case .florist: "camera.macro"
         case .area: "map.fill"
-        case .spot: "mappin"
+        case .spot: "pin.fill"
         case .sticker: "tag.fill"
         case .other: "mappin.and.ellipse"
         }

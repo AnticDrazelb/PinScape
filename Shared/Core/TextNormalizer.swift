@@ -29,15 +29,20 @@ enum TextNormalizer {
     }
 
     static func tokens(_ text: some StringProtocol) -> [Token] {
-        text.split(whereSeparator: { $0.isWhitespace }).compactMap { raw in
+        var tokens: [Token] = []
+        for raw in text.split(whereSeparator: { $0.isWhitespace }) {
             let norm = normalize(raw)
-            let endsClause = raw.last.map { ",:;".contains($0) } ?? false
             if norm.isEmpty {
-                // A free-standing "-" or "—" is punctuation, not a word.
-                return nil
+                // A free-standing "—" isn't a word, but it belongs in the text: keep it on the word before.
+                if let last = tokens.popLast() {
+                    tokens.append(Token(original: last.original + " " + raw, norm: last.norm, endsClause: true))
+                }
+                continue
             }
-            return Token(original: String(raw), norm: norm, endsClause: endsClause)
+            let endsClause = raw.last.map { ",:;".contains($0) } ?? false
+            tokens.append(Token(original: String(raw), norm: norm, endsClause: endsClause))
         }
+        return tokens
     }
 
     /// The matching key for a phrase: normalised words joined by single spaces.

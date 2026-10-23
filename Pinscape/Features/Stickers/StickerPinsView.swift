@@ -70,5 +70,6 @@ struct StickerPinsView: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationBackground(Color(uiColor: .systemGroupedBackground))
     }
 }

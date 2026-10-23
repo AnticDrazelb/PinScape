@@ -82,6 +82,7 @@ jobs:
           grep -q "TEST SUCCEEDED" test.log
 
       - name: Screenshots
+        timeout-minutes: 15
         run: |
           APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "Pinscape.app" | head -1)
           xcrun simctl boot "$UDID" || true
@@ -92,16 +93,18 @@ jobs:
           xcrun simctl privacy "$UDID" grant location-always "$BUNDLE_ID" || true
           mkdir -p shots
           shoot() {
-            name=$1; screen=$2
+            name=$1; screen=$2; shift 2
+            echo "$(date +%T) $name"
             xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
-            xcrun simctl launch "$UDID" "$BUNDLE_ID" -PinscapeDemo YES -PinscapeScreen "$screen"
+            xcrun simctl launch "$UDID" "$BUNDLE_ID" -PinscapeDemo YES -PinscapeScreen "$screen" -AppleLocale en_GB -AppleLanguages "(en-GB)" "$@"
             sleep 9
             xcrun simctl io "$UDID" screenshot "shots/$name.png"
           }
           xcrun simctl ui "$UDID" appearance light
-          for screen in home capture capture-empty pin places here map settings paywall onboarding; do
+          for screen in home capture capture-empty pin places here map settings onboarding; do
             shoot "$screen" "$screen"
           done
+          shoot paywall paywall -PinscapeFree YES
           xcrun simctl ui "$UDID" appearance dark
           shoot home-dark home
           shoot pin-dark pin

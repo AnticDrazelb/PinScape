@@ -73,7 +73,7 @@ enum PinscapePlan {
     static let freeSavedPlaces = 1
 
     static var isPro: Bool {
-        AppGroup.defaults.bool(forKey: SharedKeys.isPro) || PinStore.isDemo
+        AppGroup.defaults.bool(forKey: SharedKeys.isPro) || PinStore.isDemoPro
     }
 
     static var hasStickers: Bool {

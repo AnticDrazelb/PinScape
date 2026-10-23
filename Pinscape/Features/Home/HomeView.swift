@@ -142,7 +142,7 @@ struct HomeView: View {
                     Button {
                         model.sheet = .places
                     } label: {
-                        Image(systemName: "mappin.circle")
+                        Image(systemName: "mappin.and.ellipse")
                     }
                     .accessibilityLabel("Places")
                     Button {

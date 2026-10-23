@@ -96,6 +96,7 @@ struct PlacePickerView: View {
                             optionLabel(PlaceOption(target: place.target(), title: place.name, subtitle: place.kind == .group ? place.members.joined(separator: ", ") : (place.address.isEmpty ? "Your place" : place.address)))
                         }
                         .buttonStyle(.borderless)
+                        .foregroundStyle(.primary)
                         if place.kind == .place {
                             Button("Near") {
                                 pick(place.target(near: true))
@@ -172,6 +173,7 @@ struct PlacePickerView: View {
         } label: {
             optionLabel(option)
         }
+        .foregroundStyle(.primary)
     }
 
     private func optionLabel(_ option: PlaceOption) -> some View {

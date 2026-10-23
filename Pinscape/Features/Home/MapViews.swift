@@ -52,7 +52,7 @@ struct HomeMapCard: View {
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll, showsTraffic: false))
         .frame(height: 210)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .topLeading) {
             HStack(spacing: 6) {
                 Circle()
                     .fill(watching > 0 ? Color.green : Color.secondary)
@@ -243,6 +243,7 @@ struct HereNowView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .presentationBackground(Color(uiColor: .systemGroupedBackground))
     }
 
     private func pins(for visit: Visit) -> [Pin] {

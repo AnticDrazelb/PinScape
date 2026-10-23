@@ -27,8 +27,11 @@ struct CaptureView: View {
 
                 Spacer(minLength: 16)
 
-                transcript
-                    .padding(.horizontal, 28)
+                if !typing || !model.hasContent {
+                    transcript
+                        .padding(.horizontal, 28)
+                        .transition(.opacity)
+                }
 
                 Spacer(minLength: 16)
 
