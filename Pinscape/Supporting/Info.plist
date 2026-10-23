@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Pinscape</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pinscape</string>
+			</array>
+		</dict>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NFCReaderUsageDescription</key>
+	<string>Pinscape reads and writes NFC stickers so you can leave pins on your pantry door or desk.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Pinscape looks for upcoming trips in your calendar so it can ask if there's anything to remember there. Your calendar never leaves your iPhone.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Choose “Always” so your pins can find you when you arrive somewhere, even with Pinscape closed. Your location never leaves your iPhone.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Pinscape uses your location to find the places your pins point at, like the nearest Tesco. Your location never leaves your iPhone.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Speak a place and a thought, like “Tesco, batteries”. Audio is transcribed on your iPhone.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Pinscape turns what you say into a pin using on-device speech recognition.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>PinscapeAppGroup</key>
+	<string>$(PINSCAPE_APP_GROUP)</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+</dict>
+</plist>

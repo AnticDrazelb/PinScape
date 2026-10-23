@@ -1,0 +1,96 @@
+{
+  "identifier" : "6C3D9E0F",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6740000003",
+      "localizations" : [
+        {
+          "description" : "NFC sticker pins for your pantry and office. Yours forever.",
+          "displayName" : "Sticker Pack",
+          "locale" : "en_GB"
+        }
+      ],
+      "productID" : "com.pinscape.stickerpack",
+      "referenceName" : "Sticker Pack",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_GB",
+    "_storefront" : "GBR",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21540001",
+      "localizations" : [
+
+      ],
+      "name" : "Pinscape Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "2.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740000001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited pins, place groups, NFC stickers and export.",
+              "displayName" : "Pinscape Pro Monthly",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "com.pinscape.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Pro Monthly",
+          "subscriptionGroupID" : "21540001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "24.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited pins, place groups, NFC stickers and export.",
+              "displayName" : "Pinscape Pro Yearly",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "com.pinscape.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pro Yearly",
+          "subscriptionGroupID" : "21540001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

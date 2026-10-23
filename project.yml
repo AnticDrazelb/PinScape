@@ -1,0 +1,124 @@
+# Pinscape Xcode project, generated with XcodeGen (https://github.com/yonaskolb/XcodeGen).
+# Pinscape.xcodeproj is committed, so you only need this after adding or moving files:
+#   brew install xcodegen && xcodegen
+name: Pinscape
+
+options:
+  bundleIdPrefix: com.pinscape
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "26.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+  groupOrdering:
+    - order: [Pinscape, PinscapeWidgets, PinscapeShare, Shared, PinscapeTests, scripts]
+
+settings:
+  base:
+    # Change these two to your own identifiers before running on a device.
+    PINSCAPE_BUNDLE_ID: com.pinscape.app
+    PINSCAPE_APP_GROUP: group.com.pinscape.app
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    TARGETED_DEVICE_FAMILY: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ENABLE_PREVIEWS: YES
+    DEAD_CODE_STRIPPING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    GENERATE_INFOPLIST_FILE: NO
+
+targets:
+  Pinscape:
+    type: application
+    platform: iOS
+    sources:
+      - path: Pinscape
+        excludes:
+          - "Resources/*.storekit"
+      - path: Pinscape/Resources/Pinscape.storekit
+        buildPhase: none
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: Pinscape
+        PRODUCT_BUNDLE_IDENTIFIER: $(PINSCAPE_BUNDLE_ID)
+        INFOPLIST_FILE: Pinscape/Supporting/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Pinscape/Supporting/Pinscape.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - target: PinscapeWidgets
+      - target: PinscapeShare
+
+  PinscapeWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PinscapeWidgets
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: PinscapeWidgets
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) WIDGET_EXTENSION
+        PRODUCT_BUNDLE_IDENTIFIER: $(PINSCAPE_BUNDLE_ID).widgets
+        INFOPLIST_FILE: PinscapeWidgets/Supporting/Info.plist
+        CODE_SIGN_ENTITLEMENTS: PinscapeWidgets/Supporting/PinscapeWidgets.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+
+  PinscapeShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PinscapeShare
+      - path: Shared/Core
+      - path: Shared/Store
+      - path: Shared/UI
+    settings:
+      base:
+        PRODUCT_NAME: PinscapeShare
+        PRODUCT_BUNDLE_IDENTIFIER: $(PINSCAPE_BUNDLE_ID).share
+        INFOPLIST_FILE: PinscapeShare/Supporting/Info.plist
+        CODE_SIGN_ENTITLEMENTS: PinscapeShare/Supporting/PinscapeShare.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+
+  # Logic tests for the place parser, catalog and geofence planner. They compile the
+  # platform-independent core directly, so they also run on Linux with `swift test`.
+  PinscapeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PinscapeTests
+      - path: Shared/Core
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PINSCAPE_BUNDLE_ID).tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Pinscape:
+    build:
+      targets:
+        Pinscape: all
+        PinscapeTests: [test]
+    run:
+      config: Debug
+      storeKitConfiguration: Pinscape/Resources/Pinscape.storekit
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - PinscapeTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
