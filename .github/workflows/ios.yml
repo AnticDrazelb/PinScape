@@ -189,9 +189,11 @@ jobs:
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" ci/screenshots
 
   release:
-    name: Release archive (device, unsigned)
+    name: Release archive & IPA (device)
     runs-on: macos-26
     timeout-minutes: 40
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -206,6 +208,7 @@ jobs:
             -archivePath build/Pinscape.xcarchive \
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
             2>&1 | tee archive.log
 
       - name: Check the archive's contents
@@ -216,6 +219,52 @@ jobs:
           done
           /usr/libexec/PlistBuddy -c "Print :NSSupportsLiveActivities" "$APP/Info.plist"
           echo "Archive contains the app, both extensions and their resources."
+
+      # An IPA for sideloading tools (AltStore, SideStore, Sideloadly), which re-sign it with your
+      # Apple ID. Each bundle gets an ad-hoc signature carrying its entitlements, so those tools can
+      # see the App Group the app and its extensions share and register it for you.
+      - name: Package IPA
+        run: |
+          rm -rf ipa && mkdir -p ipa/Payload
+          cp -R build/Pinscape.xcarchive/Products/Applications/Pinscape.app ipa/Payload/
+          APP=ipa/Payload/Pinscape.app
+          sign() {
+            local entitlements="$RUNNER_TEMP/$(basename "$2")"
+            python3 -c 'import sys; print(open(sys.argv[1]).read().replace("$(PINSCAPE_APP_GROUP)", "group.com.pinscape.app"), end="")' "$2" > "$entitlements"
+            if grep -q '\$(' "$entitlements"; then echo "::error::Unexpanded setting in $2"; exit 1; fi
+            codesign --force --sign - --timestamp=none --generate-entitlement-der --entitlements "$entitlements" "$1"
+          }
+          for framework in "$APP"/Frameworks/*; do
+            if [ -e "$framework" ]; then codesign --force --sign - --timestamp=none "$framework"; fi
+          done
+          sign "$APP/PlugIns/PinscapeWidgets.appex" PinscapeWidgets/Supporting/PinscapeWidgets.entitlements
+          sign "$APP/PlugIns/PinscapeShare.appex" PinscapeShare/Supporting/PinscapeShare.entitlements
+          sign "$APP" Pinscape/Supporting/Pinscape.entitlements
+          codesign --verify --deep --strict "$APP"
+          codesign -d --entitlements - "$APP"
+          (cd ipa && zip -qry ../Pinscape.ipa Payload)
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          unzip -l Pinscape.ipa | tail -1
+          ls -lh Pinscape.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pinscape-ipa
+          path: Pinscape.ipa
+
+      - name: Publish IPA branch
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir dist && cp Pinscape.ipa dist/
+          printf '# Pinscape %s (build %s)\n\nBuilt from %s. Not signed for distribution: install it with AltStore, SideStore or Sideloadly, which sign it with your Apple ID. See the README.\n' "$VERSION" "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" > dist/README.md
+          cd dist
+          git init -q -b ci/ipa
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "Pinscape $VERSION ($GITHUB_RUN_NUMBER) from ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" ci/ipa
 
       - name: Summarise failures
         if: failure()

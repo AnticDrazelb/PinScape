@@ -2,7 +2,20 @@ import Foundation
 
 /// The container the app, widgets and share extension all read and write.
 enum AppGroup {
-    static let identifier: String = (Bundle.main.object(forInfoDictionaryKey: "PinscapeAppGroup") as? String) ?? "group.com.pinscape.app"
+    /// The group this build was made with, unless it was sideloaded: AltStore and SideStore re-sign
+    /// with a group registered to your Apple ID and list it under `ALTAppGroups`, in the app's
+    /// Info.plist (which an extension finds two folders up from its own bundle).
+    static let identifier: String = {
+        let app = Bundle.main.bundleURL.pathExtension == "appex"
+            ? Bundle(url: Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent())
+            : Bundle.main
+        for bundle in [Bundle.main, app].compactMap({ $0 }) {
+            if let sideloaded = (bundle.object(forInfoDictionaryKey: "ALTAppGroups") as? [String])?.first {
+                return sideloaded
+            }
+        }
+        return (Bundle.main.object(forInfoDictionaryKey: "PinscapeAppGroup") as? String) ?? "group.com.pinscape.app"
+    }()
 
     struct MissingContainer: LocalizedError {
         let identifier: String

@@ -138,8 +138,16 @@ In Xcode, ⌘U runs the same tests on the simulator.
 `.github/workflows/ios.yml` runs on every push:
 
 - **Core tests** on Linux (`swift test`).
-- **Release archive**: an unsigned device archive of the app and both extensions, checked for their resources.
+- **Release archive & IPA**: a Release device archive of the app and both extensions, checked for their resources, then packaged as `Pinscape.ipa` for sideloading. The IPA is attached to each run and published to the [`ci/ipa`](../../tree/ci/ipa) branch.
 - **Build, test & screenshots** on GitHub's `macos-26` runner with Xcode 26: builds the app and both extensions, runs the unit tests on an iPhone 17 Pro simulator (the StoreKit tests on iOS 26.2, because StoreKit testing is broken on the 26.4 and 26.5 simulators), then launches the app in demo mode and captures screenshots of each screen in light and dark mode. The simulator build is attached to each run as `Pinscape-simulator` (drag it onto a booted simulator to install).
+
+### Installing the IPA
+`Pinscape.ipa` has no distribution signature (that needs an Apple Developer account), so install it with a tool that signs it with your own Apple ID:
+
+- **AltStore or SideStore** (recommended). They register the shared App Group for you and tell Pinscape its new identifier, so the widgets and Share Sheet see the same pins as the app.
+- **Sideloadly** also works. If Pinscape then says it can't open your pins, the tool didn't carry the App Group over; use AltStore or SideStore instead.
+
+With a free Apple ID the install lasts 7 days before it needs refreshing, and your account may not be allowed some capabilities (NFC stickers, Time Sensitive notifications). In-app purchases only work in builds from TestFlight or the App Store, so a sideloaded copy stays on the free tier.
 
 ### TestFlight from GitHub
 `.github/workflows/testflight.yml` archives, signs and uploads to TestFlight from the macOS runner, so you never need your own Mac to get Pinscape on your phone.
