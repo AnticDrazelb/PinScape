@@ -46,9 +46,9 @@ struct HomeMapCard: View {
                     PlaceGlyph(symbol: marker.symbol, colorHex: marker.colorHex, size: 26)
                         .shadow(color: .black.opacity(0.25), radius: 3, y: 1.5)
                 }
+                .annotationTitles(.hidden)
             }
         }
-        .annotationTitles(.hidden)
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll, showsTraffic: false))
         .frame(height: 210)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
