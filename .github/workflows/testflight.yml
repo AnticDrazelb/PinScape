@@ -1,0 +1,86 @@
+name: TestFlight
+
+# Builds, signs and uploads Pinscape to TestFlight from GitHub's macOS runner.
+# Run it from the Actions tab once the secrets in README › "TestFlight from GitHub" are set.
+on:
+  workflow_dispatch:
+
+jobs:
+  upload:
+    name: Archive & upload
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY: ${{ secrets.ASC_KEY }}
+      TEAM_ID: ${{ secrets.TEAM_ID }}
+      BUNDLE_ID: ${{ vars.PINSCAPE_BUNDLE_ID || 'com.pinscape.app' }}
+      APP_GROUP: ${{ vars.PINSCAPE_APP_GROUP || 'group.com.pinscape.app' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets
+        run: |
+          missing=0
+          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing secret $name. See README › TestFlight from GitHub."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Install App Store Connect API key
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$ASC_KEY" > "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8"
+          echo "KEY_PATH=$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8" >> "$GITHUB_ENV"
+
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Pinscape.xcodeproj \
+            -scheme Pinscape \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/Pinscape.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            PINSCAPE_BUNDLE_ID="$BUNDLE_ID" \
+            PINSCAPE_APP_GROUP="$APP_GROUP" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            2>&1 | tee archive.log | grep -E "(error:|ARCHIVE)" || true
+          grep -q "ARCHIVE SUCCEEDED" archive.log
+
+      - name: Upload to TestFlight
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath build/Pinscape.xcarchive \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath build/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Show errors
+        if: failure()
+        run: grep -E "error:" archive.log | sort -u | head -80 || true

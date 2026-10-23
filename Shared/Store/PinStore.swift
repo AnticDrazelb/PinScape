@@ -48,7 +48,11 @@ enum PinscapeHooks {
 /// Reads and writes pins from any process.
 @MainActor
 enum PinActions {
-    static func activePins(in context: ModelContext = PinStore.context) -> [Pin] {
+    static func activePins() -> [Pin] {
+        activePins(in: PinStore.context)
+    }
+
+    static func activePins(in context: ModelContext) -> [Pin] {
         let descriptor = FetchDescriptor<Pin>(
             predicate: #Predicate<Pin> { $0.completedAt == nil },
             sortBy: [SortDescriptor(\Pin.createdAt, order: .reverse)]
@@ -56,18 +60,30 @@ enum PinActions {
         return (try? context.fetch(descriptor)) ?? []
     }
 
-    static func activePinCount(in context: ModelContext = PinStore.context) -> Int {
+    static func activePinCount() -> Int {
+        activePinCount(in: PinStore.context)
+    }
+
+    static func activePinCount(in context: ModelContext) -> Int {
         let descriptor = FetchDescriptor<Pin>(predicate: #Predicate<Pin> { $0.completedAt == nil })
         return (try? context.fetchCount(descriptor)) ?? 0
     }
 
-    static func pin(id: UUID, in context: ModelContext = PinStore.context) -> Pin? {
+    static func pin(id: UUID) -> Pin? {
+        pin(id: id, in: PinStore.context)
+    }
+
+    static func pin(id: UUID, in context: ModelContext) -> Pin? {
         var descriptor = FetchDescriptor<Pin>(predicate: #Predicate<Pin> { $0.id == id })
         descriptor.fetchLimit = 1
         return try? context.fetch(descriptor).first
     }
 
-    static func savedPlaces(in context: ModelContext = PinStore.context) -> [SavedPlace] {
+    static func savedPlaces() -> [SavedPlace] {
+        savedPlaces(in: PinStore.context)
+    }
+
+    static func savedPlaces(in context: ModelContext) -> [SavedPlace] {
         let descriptor = FetchDescriptor<SavedPlace>(sortBy: [SortDescriptor(\SavedPlace.createdAt)])
         return (try? context.fetch(descriptor)) ?? []
     }

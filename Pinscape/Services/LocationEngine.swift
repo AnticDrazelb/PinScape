@@ -155,7 +155,10 @@ final class LocationEngine: NSObject {
             }
         }
 
-        let here = hasAccess ? await currentLocation(maxAge: 300) : location
+        var here = location
+        if hasAccess {
+            here = await currentLocation(maxAge: 300)
+        }
         let pins = PinActions.activePins()
         let places = PinActions.savedPlaces()
 

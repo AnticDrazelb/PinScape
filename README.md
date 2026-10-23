@@ -1,3 +1,143 @@
 # Pinscape
 
-*Leave thoughts in the real world.*
+**Leave thoughts in the real world.**
+
+Pinscape lets you drop voice or text notes tied to real-world places, then surfaces them automatically when you're actually there. No lists, no planning, no "Hey Siri".
+
+> *Walk into any B&Q and your Lock Screen shows: "wood stain — the dark one".*
+
+**Core loop:** capture in 2 seconds → forget about it → get reminded at exactly the right moment.
+
+---
+
+## What's in the box
+
+| | |
+|---|---|
+| **Frictionless capture** | Action Button, Back Tap, Lock Screen widget, Control Center control, Siri, Share Sheet. Voice first with the text field always visible. Spoken confirmation ("Got it. Tesco, batteries.") and **shake to undo**. |
+| **Fuzzy places, not addresses** | "Tesco" means *any* Tesco. "Any pharmacy" means the nearest one. "Near gym" is 400 m around your saved gym. "Downtown" is 1 km around your town centre. "This bench" is where you're standing. "Pub near office" finds the pub closest to your office. All through Apple Maps. No postcodes. |
+| **Smart suggestions, zero admin** | Say "wood stain" and Pinscape suggests B&Q. Share a screenshot with "Currys" on it and Pinscape reads it on device and suggests Currys. Share an IKEA product link and it suggests IKEA. Your calendar spots trips: "Off to Bristol on Saturday. Any pins to drop?" |
+| **Ambient pins** | "This bench = call dad". An *every visit* pin comes back each time you're there, not just once. |
+| **Live Activities** | When you arrive somewhere with pins, a checklist appears on the Lock Screen and in the Dynamic Island. Tick things off without unlocking. |
+| **Widgets** | A Lock Screen capture button, waiting pins on the Lock Screen and Home Screen, and interactive tick-off buttons. |
+| **Private by design** | On-device speech recognition, an on-device encrypted store, no account, no cloud, no analytics. iOS tells Pinscape only that you arrived somewhere you pinned. |
+| **Pro** | Unlimited pins and places, place groups ("Supermarkets" = Tesco, Aldi or Lidl), NFC stickers for pantry and office, export to Notes. StoreKit 2 with a local StoreKit config for testing. |
+
+It uses the native frameworks Apple already built: **App Intents, ActivityKit (Live Activities), WidgetKit (including Control widgets), Core Location (`CLMonitor`), MapKit, Speech, AVFoundation, Vision, NaturalLanguage-style on-device matching, EventKit, Core NFC, StoreKit 2, SwiftData and TipKit.** On iOS 26 it adopts Liquid Glass. It runs on iOS 18 and later.
+
+## Screenshots
+
+Every push to `main` builds the app on GitHub's macOS runner, launches it in the iOS 26 simulator with sample data, and publishes screenshots to the [`ci/screenshots`](../../tree/ci/screenshots) branch.
+
+## How it works
+
+### Capture
+`CaptureParser` (in `Shared/Core`) splits what you said into a **place** and a **thought**. It understands:
+
+```
+Tesco, batteries                         → Tesco · "Batteries"
+wood stain the dark one at B&Q           → B&Q · "Wood stain the dark one"
+when I'm in Bristol try Sarah's café     → Bristol · "Try Sarah's café"
+near gym, book a PT session              → near Gym (400 m) · "Book a PT session"
+this bench = call dad                    → This bench · "Call dad" (every visit)
+any pharmacy: hay fever tablets          → Any pharmacy · "Hay fever tablets"
+```
+
+Then `PlaceResolver` turns the phrase into a `PlaceTarget`: a chain (any branch), a kind of place, one of your saved places, a spot, an area, a place group or an NFC sticker.
+
+### Surfacing: getting around the 20-region limit
+iOS only lets an app watch 20 regions, but "any Tesco" can mean hundreds of shops. `GeofencePlanner` keeps the **19 nearest** candidate places watched and draws a **boundary circle** around you. Leaving the boundary wakes Pinscape, which searches Apple Maps for the nearest branches again and swaps them in. Significant location changes act as a backstop.
+
+When a region fires, iOS relaunches Pinscape in the background for a few seconds. `ArrivalCoordinator` matches the region to your pins, applies the cooldown rules in `SurfacingPolicy` (no nagging when you pop in and out), posts a time-sensitive notification with **Done** and **Next visit** actions, and starts the Live Activity checklist.
+
+### Data
+Pins and places live in SwiftData inside the App Group container, so the app, widgets and share extension share one store. The store is protected with iOS Data Protection (`completeUntilFirstUserAuthentication`), which keeps it encrypted at rest while still letting an arrival be handled with the phone locked. Nothing syncs anywhere.
+
+## Project layout
+
+```
+Pinscape/            The app: screens, services (location, speech, StoreKit, NFC, calendar), App Intents
+PinscapeWidgets/     Widgets, the Control Center / Action Button control, the Live Activity
+PinscapeShare/       Share extension with on-device text recognition
+Shared/Core/         Platform-independent logic: parser, brand catalog, planner, policies
+Shared/Store/        SwiftData models and the App Group store
+Shared/UI/           Colours, place glyphs, chips (used by app and extensions)
+Shared/Activity/     Live Activity attributes and intents shared with the widget extension
+PinscapeTests/       Tests for the core logic
+project.yml          XcodeGen spec that generates Pinscape.xcodeproj
+```
+
+## Running it
+
+You need a Mac with **Xcode 26** or later.
+
+1. Open `Pinscape.xcodeproj`.
+2. In **project.yml** (or the project's build settings) change `PINSCAPE_BUNDLE_ID` and `PINSCAPE_APP_GROUP` to identifiers you own, e.g. `com.yourname.pinscape` and `group.com.yourname.pinscape`.
+3. Select the **Pinscape** target, open **Signing & Capabilities**, and pick your team. Do the same for **PinscapeWidgets** and **PinscapeShare**.
+4. Run on your iPhone. When asked, allow location **Always** and notifications.
+
+To try purchases in the simulator, the Pinscape scheme already uses `Pinscape/Resources/Pinscape.storekit`.
+
+To see the app with sample data, add the launch arguments `-PinscapeDemo YES` and optionally `-PinscapeScreen capture` (or `places`, `settings`, `paywall`, `onboarding`, `pin`, `here`, `map`).
+
+> **Free Apple developer accounts:** App Groups, NFC and Time Sensitive notifications need a paid membership. With a free account, remove those capabilities from the three `.entitlements` files to run on your own phone; widgets and the share extension then keep their own separate data.
+
+### Setting up quick capture on your phone
+- **Action Button:** Settings › Action Button › Controls › Pinscape › *Drop a Pin*.
+- **Back Tap:** Settings › Accessibility › Touch › Back Tap › Double Tap › *Drop a Pin*.
+- **Lock Screen:** customise your Lock Screen and add the *Drop a Pin* control or widget.
+- **Siri:** "Leave a thought with Pinscape", "What's pinned here in Pinscape?"
+
+### Regenerating the project
+`Pinscape.xcodeproj` is generated from `project.yml`. After adding or moving files:
+
+```sh
+brew install xcodegen
+xcodegen
+```
+
+### Tests
+The core logic runs anywhere Swift does, including Linux:
+
+```sh
+swift test
+```
+
+In Xcode, ⌘U runs the same tests on the simulator.
+
+## Built on GitHub's Macs
+
+`.github/workflows/ios.yml` runs on every push:
+
+- **Core tests** on Linux (`swift test`).
+- **Build, test & screenshots** on GitHub's `macos-26` runner with Xcode 26: builds the app and both extensions, runs the unit tests on an iPhone 17 Pro simulator, then launches the app in demo mode and captures screenshots of each screen in light and dark mode.
+
+### TestFlight from GitHub
+`.github/workflows/testflight.yml` archives, signs and uploads to TestFlight from the macOS runner, so you never need your own Mac to get Pinscape on your phone.
+
+1. Create the app in [App Store Connect](https://appstoreconnect.apple.com) with your bundle ID.
+2. Create an App Store Connect API key with the **Admin** role (Users and Access › Integrations).
+3. In this repo's **Settings › Secrets and variables › Actions**, add:
+   - Secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY` (the full contents of the `.p8` file), `TEAM_ID`.
+   - Variables: `PINSCAPE_BUNDLE_ID`, `PINSCAPE_APP_GROUP`.
+4. Run **Actions › TestFlight › Run workflow**.
+
+## Pricing
+
+| | |
+|---|---|
+| Free | 10 active pins, 1 saved place |
+| Pro | £2.99/month or £24.99/year: unlimited pins and places, place groups, NFC stickers, export to Notes |
+| Sticker Pack | £9.99 once: NFC sticker pins for pantry and office |
+
+Product IDs: `com.pinscape.pro.monthly`, `com.pinscape.pro.yearly`, `com.pinscape.stickerpack`. Create them in App Store Connect with the same IDs.
+
+## What iOS doesn't allow (and what Pinscape does instead)
+
+- **Reading your Google searches.** Apps can't see Safari or Google history. Instead, share a product page or screenshot to Pinscape and it suggests the shop (IKEA links, Currys screenshots, and so on).
+- **Starting a Live Activity from the background.** iOS only allows this while the app is open. The arrival notification always goes out; the checklist starts as soon as you open the notification or the app.
+- **Waking on an NFC tap without the app.** Tap a sticker with Pinscape open, or add a Shortcuts automation (When NFC tag is scanned › *Open Sticker Pins*) for a hands-free tap.
+
+---
+
+*Stop remembering. Start arriving.*

@@ -153,7 +153,11 @@ struct SettingsView: View {
             .onChange(of: shakeToUndo) { _, value in PinscapeSettings.shakeToUndo = value }
             .onChange(of: cooldown) { _, value in PinscapeSettings.cooldownHours = value }
             .task {
-                notificationStatus = PinStore.isDemo ? .authorized : await NotificationManager.authorizationStatus()
+                if PinStore.isDemo {
+                    notificationStatus = .authorized
+                } else {
+                    notificationStatus = await NotificationManager.authorizationStatus()
+                }
             }
         }
     }
