@@ -29,15 +29,17 @@ enum PlaceResolver {
         case notFound
     }
 
-    static func resolve(_ phrase: PlacePhrase, savedPlaces: [SavedPlace]) async -> Outcome {
-        if let anchorName = phrase.anchor, let anchor = savedPlace(named: anchorName, in: savedPlaces), let near = await nearest(phrase, around: anchor) {
-            return .resolved(near)
-        }
+    /// Resolutions that need no lookup (a brand, a kind of place, one of your places), available
+    /// immediately so the capture screen never shows a stale place while you type.
+    static func resolveInstantly(_ phrase: PlacePhrase, savedPlaces: [SavedPlace]) -> Outcome? {
+        guard phrase.anchor == nil else { return nil }
+        return offlineOutcome(for: phrase, savedPlaces: savedPlaces)
+    }
 
+    private static func offlineOutcome(for phrase: PlacePhrase, savedPlaces: [SavedPlace]) -> Outcome? {
         switch phrase.match {
         case .brand(let brand):
             return .resolved(.brand(brand))
-
         case .category(let category):
             if !category.isSearchable {
                 if let saved = savedPlace(named: category.displayName, in: savedPlaces) {
@@ -46,10 +48,25 @@ enum PlaceResolver {
                 return .needsSavedPlace(category)
             }
             return .resolved(.category(category))
-
         case .saved(let name):
             guard let saved = savedPlace(named: name, in: savedPlaces) else { return .notFound }
             return .resolved(saved.target(near: phrase.isNear))
+        case .here, .downtown, .freeform:
+            return nil
+        }
+    }
+
+    static func resolve(_ phrase: PlacePhrase, savedPlaces: [SavedPlace]) async -> Outcome {
+        if let anchorName = phrase.anchor, let anchor = savedPlace(named: anchorName, in: savedPlaces), let near = await nearest(phrase, around: anchor) {
+            return .resolved(near)
+        }
+        if let outcome = offlineOutcome(for: phrase, savedPlaces: savedPlaces) {
+            return outcome
+        }
+
+        switch phrase.match {
+        case .brand, .category, .saved:
+            return .notFound
 
         case .here:
             guard let location = await LocationEngine.shared.currentLocation(maxAge: 60) else { return .notFound }

@@ -3,8 +3,8 @@ import Foundation
 import Observation
 import Speech
 
-/// Live dictation using Apple's on-device speech model. Audio never leaves the phone:
-/// when on-device recognition is available Pinscape requires it.
+/// Live dictation using Apple's on-device speech model, and only that: if the model isn't available
+/// for your language, Pinscape asks you to type rather than sending audio to a server.
 @MainActor
 @Observable
 final class SpeechCapture {
@@ -55,6 +55,10 @@ final class SpeechCapture {
             state = .unavailable("Dictation isn't available right now. Type instead.")
             return
         }
+        guard recognizer.supportsOnDeviceRecognition else {
+            state = .unavailable("On-device dictation isn't available for your language yet, and Pinscape won't send your voice off your iPhone. Type instead.")
+            return
+        }
         transcript = ""
         level = 0
 
@@ -70,9 +74,7 @@ final class SpeechCapture {
             request.addsPunctuation = true
             request.taskHint = .dictation
             request.contextualStrings = Array(contextualStrings.prefix(100))
-            if recognizer.supportsOnDeviceRecognition {
-                request.requiresOnDeviceRecognition = true
-            }
+            request.requiresOnDeviceRecognition = true
             self.request = request
 
             let input = engine.inputNode

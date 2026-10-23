@@ -69,6 +69,11 @@ final class AppModel {
     var capture: CaptureRequest? = nil
     var sheet: Sheet? = nil
     var undo: UndoToast? = nil
+    /// A change that couldn't be saved, shown as an alert.
+    var storeAlert: String? = nil
+    /// Bumped when the store is reopened, so every view rebuilds against it.
+    private(set) var storeGeneration = 0
+    private(set) var storeHealth: StoreHealth = PinStore.health
     var showOnboarding: Bool
     private(set) var visits: [Visit] = []
 
@@ -81,6 +86,10 @@ final class AppModel {
     // MARK: Capture
 
     func startCapture(text: String = "", place: PlaceTarget? = nil, listen: Bool = true, source: PinSource = .app) {
+        guard PinStore.isWritable else {
+            storeAlert = PersistenceError.storeUnavailable.localizedDescription
+            return
+        }
         guard PinActions.canAddPin else {
             sheet = .paywall(.pinLimit)
             return
@@ -118,7 +127,8 @@ final class AppModel {
         case "capture":
             let text = query.first { $0.name == "text" }?.value ?? ""
             let place = query.first { $0.name == "place" }?.value
-            startCapture(text: place.map { "\($0), \(text)" } ?? text, listen: text.isEmpty && place == nil, source: .widget)
+            let source = query.first { $0.name == "source" }?.value.flatMap(PinSource.init(rawValue:)) ?? .widget
+            startCapture(text: place.map { "\($0), \(text)" } ?? text, listen: text.isEmpty && place == nil, source: source)
         case "pin":
             if let id = parts.first.flatMap(UUID.init(uuidString:)) { sheet = .pin(id) }
         case "sticker":
@@ -145,6 +155,15 @@ final class AppModel {
         guard let route = AppGroup.defaults.string(forKey: SharedKeys.pendingRoute) else { return }
         AppGroup.defaults.removeObject(forKey: SharedKeys.pendingRoute)
         open(route: route)
+    }
+
+    /// Retries a store that failed to open. Called when the app comes forward and from the problem screen.
+    func reopenStoreIfNeeded() {
+        if PinStore.reopenIfUnavailable() {
+            storeGeneration += 1
+            LocationEngine.shared.scheduleReplan()
+        }
+        storeHealth = PinStore.health
     }
 
     func refreshVisits() {

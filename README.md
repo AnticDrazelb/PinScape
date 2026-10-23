@@ -20,7 +20,7 @@ Pinscape lets you drop voice or text notes tied to real-world places, then surfa
 | **Next visit or every visit** | New pins remind you on your **next visit only**, then wait in your list (re-arm with one tap). Switch a pin to **every visit** for ambient notes like "this bench = call dad", which come back each time you're there. |
 | **Live Activities** | When you arrive somewhere with pins, a checklist appears on the Lock Screen and in the Dynamic Island. Tick things off without unlocking. |
 | **Widgets** | A Lock Screen capture button, waiting pins on the Lock Screen and Home Screen, and interactive tick-off buttons. |
-| **Private by design** | On-device speech recognition, an on-device encrypted store, no account, no cloud, no analytics. iOS tells Pinscape only that you arrived somewhere you pinned. |
+| **Private by design** | On-device-only speech recognition, an encrypted store on the phone, no account, no Pinscape servers, no analytics, no location history. Finding shops uses Apple Maps. See [Privacy in detail](#privacy-in-detail). |
 | **Pro** | Unlimited pins and places, place groups ("Supermarkets" = Tesco, Aldi or Lidl), NFC stickers for pantry and office, export to Notes. StoreKit 2 with a local StoreKit config for testing. |
 
 It uses the native frameworks Apple already built: **App Intents, ActivityKit (Live Activities), WidgetKit (including Control widgets), Core Location (`CLMonitor`), MapKit, Speech, AVFoundation, Vision, NaturalLanguage (on-device word embeddings), EventKit, Core NFC, StoreKit 2, SwiftData and TipKit.** On iOS 26 it adopts Liquid Glass. It runs on iOS 18 and later.
@@ -62,6 +62,22 @@ When a region fires, iOS relaunches Pinscape in the background for a few seconds
 
 ### Data
 Pins and places live in SwiftData inside the App Group container, so the app, widgets and share extension share one store. The store is protected with iOS Data Protection (`completeUntilFirstUserAuthentication`), which keeps it encrypted at rest while still letting an arrival be handled with the phone locked. Nothing syncs anywhere.
+
+## Privacy in detail
+
+Pinscape has no servers, accounts, analytics or third-party SDKs. What stays on the iPhone and what goes to Apple:
+
+| | Where it's handled |
+|---|---|
+| Your voice | On the iPhone only (`requiresOnDeviceRecognition`). If the on-device model isn't available for your language, voice capture is switched off and you type instead. |
+| Pins, places, stickers | An encrypted SwiftData store in the App Group container. Never synced. |
+| Where you are | iOS watches your pinned places on the device and wakes Pinscape on arrival. Pinscape keeps no location history; it stores only the last known position (to rank nearby shops) and the regions it's watching. |
+| Finding shops and addresses | Apple Maps (`MKLocalSearch`), which receives the search text and the map area around you, as in the Maps app. Street and town names for "here" and "downtown" come from Apple's reverse geocoder. |
+| Calendar trips | Read on the device. An event whose location has no coordinates is looked up in Apple Maps. |
+| Screenshots you share | Text recognition with Vision, on the device. |
+| Purchases | StoreKit and the App Store. |
+
+Pinscape itself collects nothing, so its App Store privacy label should be "Data Not Collected"; Apple Maps and App Store requests are handled by Apple under Apple's privacy policy.
 
 ## Project layout
 

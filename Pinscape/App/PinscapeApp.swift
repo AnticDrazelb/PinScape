@@ -14,18 +14,19 @@ struct PinscapeApp: App {
                 .environment(AppModel.shared)
                 .environment(LocationEngine.shared)
                 .environment(ProStore.shared)
-                .modelContainer(PinStore.container)
                 .tint(Theme.accent)
                 .onOpenURL { AppModel.shared.open($0) }
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
+            AppModel.shared.reopenStoreIfNeeded()
             AppModel.shared.handlePendingRoute()
             AppModel.shared.refreshVisits()
             if AppGroup.defaults.bool(forKey: SharedKeys.needsReplan) {
                 LocationEngine.shared.scheduleReplan()
             }
             Task {
+                await ProStore.shared.refreshEntitlements()
                 await LiveActivityController.resumeForCurrentVisits()
                 await CalendarScout.shared.refresh()
             }
@@ -39,6 +40,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         NotificationManager.registerCategories()
         PinscapeHooks.openRoute = { route in
             AppModel.shared.open(route: route)
+        }
+        PinscapeHooks.writeFailed = { message in
+            AppModel.shared.storeAlert = message
         }
         if PinStore.isDemo {
             try? Tips.configure([.displayFrequency(.immediate)])

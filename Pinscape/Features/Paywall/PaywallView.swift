@@ -121,23 +121,33 @@ struct PaywallView: View {
 
     private var planPicker: some View {
         VStack(spacing: 10) {
-            PlanCard(
-                title: "Monthly",
-                price: monthlyPrice,
-                detail: "Try it for a month · cancel any time",
-                badge: nil,
-                selected: plan == .monthly
-            )
-            .onTapGesture { plan = .monthly }
+            Button {
+                plan = .monthly
+            } label: {
+                PlanCard(
+                    title: "Monthly",
+                    price: monthlyPrice,
+                    detail: "Try it for a month · cancel any time",
+                    badge: nil,
+                    selected: plan == .monthly
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(plan == .monthly ? .isSelected : [])
 
-            PlanCard(
-                title: "Yearly",
-                price: yearlyPrice,
-                detail: "Works out at \(monthlyEquivalent) a month",
-                badge: "SAVE 30%",
-                selected: plan == .yearly
-            )
-            .onTapGesture { plan = .yearly }
+            Button {
+                plan = .yearly
+            } label: {
+                PlanCard(
+                    title: "Yearly",
+                    price: yearlyPrice,
+                    detail: "Works out at \(monthlyEquivalent) a month",
+                    badge: "SAVE 30%",
+                    selected: plan == .yearly
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(plan == .yearly ? .isSelected : [])
         }
         .sensoryFeedback(.selection, trigger: plan)
     }

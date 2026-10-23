@@ -48,7 +48,16 @@ enum NotificationManager {
             "regionID": visit.regionID,
         ]
         let request = UNNotificationRequest(identifier: "arrival.\(visit.regionID).\(Int(Date().timeIntervalSince1970))", content: content, trigger: nil)
-        try? await UNUserNotificationCenter.current().add(request)
+        let status = await authorizationStatus()
+        if status != .authorized && status != .provisional && status != .ephemeral {
+            // The arrival worked; the reminder can't be shown. Diagnostics says so plainly.
+            Diagnostics.record(.notificationsOff, "Notification permission: \(status.rawValue)")
+        }
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+        } catch {
+            Diagnostics.record(.notificationFailed, error.localizedDescription)
+        }
     }
 
     /// Handles a tap or an action button on an arrival notification.

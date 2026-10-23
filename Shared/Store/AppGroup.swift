@@ -4,14 +4,29 @@ import Foundation
 enum AppGroup {
     static let identifier: String = (Bundle.main.object(forInfoDictionaryKey: "PinscapeAppGroup") as? String) ?? "group.com.pinscape.app"
 
-    static var containerURL: URL {
+    struct MissingContainer: LocalizedError {
+        let identifier: String
+        var errorDescription: String? {
+            "The shared App Group “\(identifier)” isn't available, so the app and its extensions can't share pins. Check the App Groups capability and provisioning profile."
+        }
+    }
+
+    /// The shared container directory.
+    ///
+    /// A signed build without the App Group entitlement would otherwise give the app, widgets and
+    /// share extension separate stores without anyone noticing, so in Release a missing container
+    /// is an error. Debug builds (unsigned CI, previews) fall back to the app's own sandbox.
+    static func containerURL() throws -> URL {
         if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier) {
             return url
         }
-        // Unsigned builds (CI, previews) have no group container; keep working from the app's own sandbox.
+        #if DEBUG
         let fallback = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
         return fallback
+        #else
+        throw MissingContainer(identifier: identifier)
+        #endif
     }
 
     static let defaults: UserDefaults = UserDefaults(suiteName: identifier) ?? .standard
@@ -20,6 +35,7 @@ enum AppGroup {
 enum SharedKeys {
     static let isPro = "isPro"
     static let hasStickerPack = "hasStickerPack"
+    static let proExpiresAt = "proExpiresAt"
     static let needsReplan = "needsReplan"
     static let pendingRoute = "pendingRoute"
     static let plannedRegions = "plannedRegions"
@@ -80,7 +96,7 @@ enum PinscapePlan {
     static let freeSavedPlaces = 1
 
     static var isPro: Bool {
-        AppGroup.defaults.bool(forKey: SharedKeys.isPro) || PinStore.isDemoPro
+        PinStore.isDemoPro || Entitlements.cachedIsPro
     }
 
     static var hasStickers: Bool {

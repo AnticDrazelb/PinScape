@@ -8,10 +8,9 @@ import StoreKit
 final class ProStore {
     static let shared = ProStore()
 
-    static let monthlyID = "com.pinscape.pro.monthly"
-    static let yearlyID = "com.pinscape.pro.yearly"
-    static let stickerPackID = "com.pinscape.stickerpack"
-    static let subscriptionIDs: Set<String> = [monthlyID, yearlyID]
+    static let monthlyID = Entitlements.monthlyID
+    static let yearlyID = Entitlements.yearlyID
+    static let stickerPackID = Entitlements.stickerPackID
 
     private(set) var products: [Product] = []
     private(set) var isPro: Bool
@@ -50,27 +49,15 @@ final class ProStore {
         do {
             products = try await Product.products(for: [Self.monthlyID, Self.yearlyID, Self.stickerPackID])
         } catch {
-            print("Pinscape: products unavailable: \(error)")
+            Diagnostics.logger.error("Products unavailable: \(error.localizedDescription, privacy: .public)")
         }
         hasLoadedProducts = true
     }
 
     func refreshEntitlements() async {
-        var pro = false
-        var stickers = false
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result, transaction.revocationDate == nil else { continue }
-            if Self.subscriptionIDs.contains(transaction.productID) {
-                if let expiry = transaction.expirationDate, expiry < Date() { continue }
-                pro = true
-            } else if transaction.productID == Self.stickerPackID {
-                stickers = true
-            }
-        }
-        isPro = pro || PinStore.isDemoPro
-        hasStickerPack = stickers
-        AppGroup.defaults.set(pro, forKey: SharedKeys.isPro)
-        AppGroup.defaults.set(stickers, forKey: SharedKeys.hasStickerPack)
+        let state = await Entitlements.refresh()
+        isPro = state.isPro || PinStore.isDemoPro
+        hasStickerPack = state.hasStickerPack
     }
 
     /// Handles the result of SwiftUI's `purchase` action. Returns true when something was bought.

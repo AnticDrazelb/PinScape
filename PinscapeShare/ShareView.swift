@@ -12,6 +12,11 @@ struct ShareView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    if !PinStore.isWritable {
+                        Label("Pinscape can't open your pins right now, so this can't be saved. Open the app for details.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.orange)
+                    }
                     preview
                     noteCard
                     if !model.lines.isEmpty {
@@ -70,6 +75,11 @@ struct ShareView: View {
                     .fontWeight(.semibold)
                     .disabled(!model.canSave)
                 }
+            }
+            .alert("Not saved", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(model.errorMessage ?? "")
             }
             .alert("Free pins are full", isPresented: Binding(get: { model.limitReached }, set: { _ in })) {
                 Button("OK", action: close)

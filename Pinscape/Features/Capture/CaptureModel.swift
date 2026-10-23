@@ -10,6 +10,16 @@ final class CaptureModel {
         case saved
     }
 
+    enum SaveOutcome: Equatable {
+        case saved
+        /// The free tier is full.
+        case needsPro
+        /// Nothing was stored; `saveError` says why.
+        case failed(String)
+        /// No settled place or no thought yet.
+        case notReady
+    }
+
     private var storedText: String
     var text: String {
         get { storedText }
@@ -35,6 +45,10 @@ final class CaptureModel {
     private(set) var usedVoice = false
     private(set) var savedPin: Pin? = nil
     private(set) var isAutoSaving = false
+    /// Set when saving failed. The pin was not stored.
+    private(set) var saveError: String? = nil
+    /// Auto-save found the free tier full; the screen hands over to the paywall.
+    private(set) var hitPinLimit = false
 
     private var storedAmbient = false
     /// Surface on every visit. Once you flip it, the words you say stop overriding it.
@@ -53,6 +67,8 @@ final class CaptureModel {
     @ObservationIgnored private var resolveTask: Task<Void, Never>? = nil
     @ObservationIgnored private var autoSaveTask: Task<Void, Never>? = nil
     @ObservationIgnored private var lastPhrase: PlacePhrase? = nil
+    /// Bumped for every new place phrase, so a slow lookup can never overwrite a newer one.
+    @ObservationIgnored private var resolveGeneration = 0
     private let source: PinSource
 
     static var market: Brand.Market {
@@ -78,9 +94,15 @@ final class CaptureModel {
 
     var hasContent: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
+    /// Only a settled, unambiguous place can be saved: never the previous place while a new one
+    /// is still being looked up, and never a guess among several matches.
     var canSave: Bool {
-        stage == .composing && place != nil && !note.isEmpty
+        guard stage == .composing, place != nil, !note.isEmpty else { return false }
+        return chosenPlace != nil || !isResolving
     }
+
+    /// Several places matched and you need to pick one.
+    var needsChoice: Bool { place == nil && !alternatives.isEmpty }
 
     /// The words a place was heard as, for "Finding Bristol…".
     var heardPlace: String? { parsed.place?.text }
@@ -93,14 +115,13 @@ final class CaptureModel {
 
     func choose(_ target: PlaceTarget) {
         cancelAutoSave()
+        resolveGeneration += 1
+        resolveTask?.cancel()
+        isResolving = false
         chosenPlace = target
         alternatives = []
         missingPlace = nil
-    }
-
-    func clearChosenPlace() {
-        chosenPlace = nil
-        textChanged()
+        saveError = nil
     }
 
     func userInteracted() {
@@ -108,6 +129,7 @@ final class CaptureModel {
     }
 
     private func textChanged() {
+        saveError = nil
         parsed = CaptureParser(savedPlaceNames: savedPlaces.map(\.name)).parse(text)
         if !ambientChosen {
             storedAmbient = parsed.isAmbient
@@ -119,46 +141,56 @@ final class CaptureModel {
     private func resolve() {
         guard chosenPlace == nil else { return }
         guard let phrase = parsed.place else {
-            resolveTask?.cancel()
-            lastPhrase = nil
-            resolvedPlace = nil
-            alternatives = []
-            missingPlace = nil
-            isResolving = false
+            startResolution(for: nil)
             return
         }
         guard phrase != lastPhrase else { return }
-        lastPhrase = phrase
-        resolveTask?.cancel()
+        startResolution(for: phrase)
+    }
 
-        // Brands, kinds of place and your own places resolve instantly; the rest need a lookup.
-        let instant: Bool
-        switch phrase.match {
-        case .brand, .category, .saved: instant = phrase.anchor == nil
-        case .here, .downtown, .freeform: instant = false
+    private func startResolution(for phrase: PlacePhrase?) {
+        resolveGeneration += 1
+        let generation = resolveGeneration
+        resolveTask?.cancel()
+        lastPhrase = phrase
+        alternatives = []
+        missingPlace = nil
+
+        guard let phrase else {
+            resolvedPlace = nil
+            isResolving = false
+            return
         }
-        isResolving = !instant
+        // Brands, kinds of place and your own places resolve on the spot.
+        if let outcome = PlaceResolver.resolveInstantly(phrase, savedPlaces: savedPlaces) {
+            isResolving = false
+            apply(outcome)
+            return
+        }
+        // Anything else needs Apple Maps. Drop the old place now so it can't be saved by mistake.
+        resolvedPlace = nil
+        isResolving = true
         let places = savedPlaces
         resolveTask = Task { [weak self] in
-            if !instant {
-                try? await Task.sleep(for: .milliseconds(450))
-                if Task.isCancelled { return }
-            }
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
             let outcome = await PlaceResolver.resolve(phrase, savedPlaces: places)
-            if Task.isCancelled { return }
-            self?.apply(outcome)
+            guard let self, !Task.isCancelled, generation == self.resolveGeneration else { return }
+            self.isResolving = false
+            self.apply(outcome)
         }
     }
 
-    private func apply(_ outcome: PlaceResolver.Outcome) {
-        isResolving = false
+    /// Internal so tests can feed outcomes in directly.
+    func apply(_ outcome: PlaceResolver.Outcome) {
         alternatives = []
         missingPlace = nil
         switch outcome {
         case .resolved(let target):
             resolvedPlace = target
         case .choose(let options):
-            resolvedPlace = options.first?.target
+            // Several matches: you pick. Nothing is chosen for you, by voice or otherwise.
+            resolvedPlace = nil
             alternatives = options
         case .needsSavedPlace(let category):
             resolvedPlace = nil
@@ -192,7 +224,9 @@ final class CaptureModel {
         autoSaveTask?.cancel()
         isAutoSaving = true
         autoSaveTask = Task { [weak self] in
-            for _ in 0..<30 {
+            // Wait for a definite place. If it's still being looked up after a few seconds,
+            // or several places matched, leave it for you to confirm rather than guess.
+            for _ in 0..<40 {
                 guard let self, !Task.isCancelled else { return }
                 if !self.isResolving { break }
                 try? await Task.sleep(for: .milliseconds(100))
@@ -200,8 +234,9 @@ final class CaptureModel {
             try? await Task.sleep(for: .milliseconds(900))
             guard let self, !Task.isCancelled else { return }
             self.isAutoSaving = false
-            if self.canSave {
-                _ = self.save()
+            guard self.canSave else { return }
+            if self.save() == .needsPro {
+                self.hitPinLimit = true
             }
         }
     }
@@ -214,19 +249,27 @@ final class CaptureModel {
 
     // MARK: Saving
 
-    /// Returns false when the free tier is full.
+    /// Stores the pin. "Got it" (the chime, the haptic, the voice) only happens once it's safely on disk.
     @discardableResult
-    func save() -> Bool {
+    func save() -> SaveOutcome {
         cancelAutoSave()
-        guard canSave, let place else { return true }
-        guard PinActions.canAddPin else { return false }
+        guard canSave, let place else { return .notReady }
+        guard PinActions.canAddPin else { return .needsPro }
         speech.cancel()
-        let pin = PinActions.add(text: note, place: place, isAmbient: isAmbient, capturedByVoice: usedVoice, source: usedVoice ? .voice : source)
-        savedPin = pin
-        stage = .saved
-        CaptureFeedback.pinDropped()
-        ActionButtonTip.recordPinDropped()
-        VoiceConfirmation.shared.say(SurfacingPolicy.confirmation(place: place.title, note: note))
-        return true
+        do {
+            let pin = try PinActions.add(text: note, place: place, isAmbient: isAmbient, capturedByVoice: usedVoice, source: usedVoice ? .voice : source)
+            savedPin = pin
+            saveError = nil
+            stage = .saved
+            CaptureFeedback.pinDropped()
+            ActionButtonTip.recordPinDropped()
+            VoiceConfirmation.shared.say(SurfacingPolicy.confirmation(place: place.title, note: note))
+            return .saved
+        } catch {
+            let message = error.localizedDescription
+            saveError = message
+            CaptureFeedback.failed()
+            return .failed(message)
+        }
     }
 }

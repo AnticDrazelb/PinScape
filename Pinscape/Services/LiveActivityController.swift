@@ -1,5 +1,6 @@
 import ActivityKit
 import Foundation
+import UIKit
 
 /// Starts the "you're here" checklist on the Lock Screen and Dynamic Island.
 @MainActor
@@ -18,8 +19,11 @@ enum LiveActivityController {
         do {
             _ = try Activity<PinActivityAttributes>.request(attributes: attributes, content: content, pushType: nil)
         } catch {
-            // iOS only allows starting an activity from the foreground; the notification still went out.
-            print("Pinscape: Live Activity not started: \(error)")
+            // iOS only allows starting an activity from the foreground; the notification still went
+            // out, and the checklist starts when the app is opened. Only a foreground failure is news.
+            if UIApplication.shared.applicationState == .active {
+                Diagnostics.record(.liveActivityFailed, error.localizedDescription)
+            }
         }
     }
 

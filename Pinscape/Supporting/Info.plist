@@ -38,15 +38,15 @@
 	<key>NFCReaderUsageDescription</key>
 	<string>Pinscape reads and writes NFC stickers so you can leave pins on your pantry door or desk.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Pinscape looks for upcoming trips in your calendar so it can ask if there's anything to remember there. Your calendar never leaves your iPhone.</string>
+	<string>Pinscape looks for upcoming trips in your calendar so it can ask if there's anything to remember there. It reads your calendar on your iPhone; a trip's location may be looked up in Apple Maps.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Choose “Always” so your pins can find you when you arrive somewhere, even with Pinscape closed. Your location never leaves your iPhone.</string>
+	<string>Choose “Always” so your pins can find you when you arrive somewhere, even with Pinscape closed. iOS watches your pinned places on your iPhone. Pinscape has no servers and keeps no location history.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Pinscape uses your location to find the places your pins point at, like the nearest Tesco. Your location never leaves your iPhone.</string>
+	<string>Pinscape uses your location to find the places your pins point at, like the nearest Tesco, using Apple Maps. Pinscape has no servers and keeps no location history.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Speak a place and a thought, like “Tesco, batteries”. Audio is transcribed on your iPhone.</string>
+	<string>Speak a place and a thought, like “Tesco, batteries”. Pinscape only uses on-device speech recognition, so your voice stays on your iPhone.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Pinscape turns what you say into a pin using on-device speech recognition.</string>
+	<string>Pinscape turns what you say into a pin using on-device speech recognition only. If that isn't available for your language, you can type instead.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>PinscapeAppGroup</key>

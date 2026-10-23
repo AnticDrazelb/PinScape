@@ -102,12 +102,28 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(PINSCAPE_BUNDLE_ID).tests
         GENERATE_INFOPLIST_FILE: YES
 
+  # Tests that run inside the app: StoreKit purchases, the on-disk store, capture resolution.
+  PinscapeAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PinscapeAppTests
+      - path: Pinscape/Resources/Pinscape.storekit
+        buildPhase: resources
+    dependencies:
+      - target: Pinscape
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PINSCAPE_BUNDLE_ID).apptests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   Pinscape:
     build:
       targets:
         Pinscape: all
         PinscapeTests: [test]
+        PinscapeAppTests: [test]
     run:
       config: Debug
       storeKitConfiguration: Pinscape/Resources/Pinscape.storekit
@@ -116,6 +132,7 @@ schemes:
       gatherCoverageData: true
       targets:
         - PinscapeTests
+        - PinscapeAppTests
     profile:
       config: Release
     analyze:

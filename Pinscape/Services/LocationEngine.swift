@@ -28,6 +28,8 @@ final class LocationEngine: NSObject {
     @ObservationIgnored private var started = false
     @ObservationIgnored private var wantsAlwaysUpgrade = false
     @ObservationIgnored private var replanAgain = false
+    @ObservationIgnored private var monitorFailures = 0
+    @ObservationIgnored private var lastPlanAttempt: Date? = nil
     @ObservationIgnored private var locationWaiters: [CheckedContinuation<CLLocation?, Never>] = []
 
     private override init() {
@@ -64,7 +66,21 @@ final class LocationEngine: NSObject {
             await self.startMonitor()
             if AppGroup.defaults.bool(forKey: SharedKeys.needsReplan) || self.regions.isEmpty {
                 self.scheduleReplan(after: .milliseconds(200))
+            } else {
+                await self.reconcile()
             }
+        }
+    }
+
+    /// Checks that what Core Location watches matches the saved plan (an interrupted plan or a
+    /// crash mid-update can leave them apart) and re-plans if not.
+    private func reconcile() async {
+        guard let monitor else { return }
+        let monitored = Set(await monitor.identifiers)
+        let planned = Set(RegionStore.load().map(\.id))
+        if monitored != planned {
+            Diagnostics.record(.planIncomplete, "Monitored \(monitored.count) regions, plan has \(planned.count); re-planning")
+            scheduleReplan()
         }
     }
 
@@ -135,6 +151,8 @@ final class LocationEngine: NSObject {
     /// Works out which places to watch and hands them to Core Location.
     func replan() async {
         guard !PinStore.isDemo else { return }
+        // Without readable pins an empty plan would disarm everything. Keep what's armed.
+        guard PinStore.isWritable else { return }
         if monitor == nil {
             await startMonitor()
         }
@@ -155,40 +173,42 @@ final class LocationEngine: NSObject {
             }
         }
 
+        lastPlanAttempt = Date()
         var here = location
         if hasAccess {
             here = await currentLocation(maxAge: 300)
         }
         // Pins that already reminded you don't take up any of iOS's 20 watched places.
-        let pins = PinActions.activePins().filter(\.isArmed)
-        let places = PinActions.savedPlaces()
+        let snapshots = PinActions.snapshots(of: PinActions.activePins(), places: PinActions.savedPlaces())
+        let inputs = GeofencePlanner.inputs(for: snapshots)
 
-        var candidates: [RegionCandidate] = []
-        var searches: [String: PlaceSearchSpec] = [:]
-        for pin in pins {
-            let target = PinActions.resolvedTarget(for: pin, places: places)
-            if let key = target.fixedKey, let center = target.center {
-                let candidate = RegionCandidate(key: key, title: target.title, subtitle: target.kind == .spot ? target.detail : nil, center: center, radius: target.radius, symbol: target.symbol, colorHex: target.colorHex)
-                candidates.append(candidate)
-            }
-            for spec in target.searches where searches[spec.key] == nil {
-                searches[spec.key] = spec
-            }
-        }
+        var candidates = inputs.fixed
+        var complete = true
         if let here {
-            for spec in searches.values.sorted(by: { $0.key < $1.key }) {
-                candidates += await PlaceSearch.shared.branches(for: spec, near: here)
+            for spec in inputs.searches {
+                let lookup = await PlaceSearch.shared.branches(for: spec, near: here)
+                candidates += lookup.results
+                complete = complete && lookup.isFresh
             }
+        } else if !inputs.searches.isEmpty {
+            complete = false
         }
 
         let userPoint = here.map { GeoPoint($0.coordinate) }
-        let plan = GeofencePlanner.plan(candidates: candidates, around: userPoint, refreshDistance: searches.isEmpty ? nil : 3_000)
+        let plan = GeofencePlanner.plan(candidates: candidates, around: userPoint, refreshDistance: inputs.searches.isEmpty ? nil : 3_000)
         await apply(plan, to: monitor)
 
         regions = plan.regions
         RegionStore.save(plan.all)
         lastPlannedLocation = here
-        AppGroup.defaults.set(false, forKey: SharedKeys.needsReplan)
+        // A failed search means some branches may be missing or old: try again later rather than
+        // treating the plan as finished.
+        AppGroup.defaults.set(!complete, forKey: SharedKeys.needsReplan)
+        if complete {
+            Diagnostics.record(.planApplied, "\(plan.regions.count) regions")
+        } else {
+            Diagnostics.record(.planIncomplete, here == nil ? "No location fix" : "Some Apple Maps searches failed; using what's known")
+        }
     }
 
     private func apply(_ plan: GeofencePlan, to monitor: CLMonitor) async {
@@ -210,15 +230,37 @@ final class LocationEngine: NSObject {
         let monitor = await CLMonitor("PinscapePlaces")
         guard self.monitor == nil else { return }
         self.monitor = monitor
+        monitorTask?.cancel()
         monitorTask = Task { [weak self] in
             do {
                 for try await event in await monitor.events {
                     guard let self else { return }
+                    self.monitorFailures = 0
                     await self.handle(identifier: event.identifier, state: event.state)
                 }
+                guard !Task.isCancelled else { return }
+                await self?.monitorStopped("The event stream ended")
             } catch {
-                print("Pinscape: monitor events ended: \(error)")
+                guard !Task.isCancelled else { return }
+                await self?.monitorStopped(error.localizedDescription)
             }
+        }
+    }
+
+    /// The event stream died: without it no arrival would ever be seen again in this process.
+    /// Start a fresh consumer with backoff (2 s, 4 s, … up to 5 minutes), one at a time.
+    private func monitorStopped(_ reason: String) async {
+        Diagnostics.record(.monitorStopped, reason)
+        monitor = nil
+        monitorTask = nil
+        monitorFailures += 1
+        let delay = min(pow(2, Double(monitorFailures)), 300)
+        try? await Task.sleep(for: .seconds(delay))
+        guard monitor == nil else { return }
+        await startMonitor()
+        if monitor != nil {
+            Diagnostics.record(.monitorRestarted, "After \(monitorFailures) attempt(s)")
+            await reconcile()
         }
     }
 
@@ -267,11 +309,11 @@ final class LocationEngine: NSObject {
         PinscapeSettings.lastKnownPoint = GeoPoint(newLocation.coordinate)
         resumeWaiters(with: newLocation)
         guard !isPlanning else { return }
-        if let lastPlannedLocation {
-            if newLocation.distance(from: lastPlannedLocation) > 1_500 {
-                scheduleReplan()
-            }
+        if let lastPlannedLocation, newLocation.distance(from: lastPlannedLocation) > 1_500 {
+            scheduleReplan()
         } else if AppGroup.defaults.bool(forKey: SharedKeys.needsReplan) {
+            // Pins changed, or the last plan was incomplete. Retry, but not more than every few minutes.
+            if let lastPlanAttempt, Date().timeIntervalSince(lastPlanAttempt) < 5 * 60 { return }
             scheduleReplan()
         }
     }

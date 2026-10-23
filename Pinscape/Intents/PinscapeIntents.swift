@@ -28,12 +28,21 @@ struct QuickPinIntent: AppIntent {
         let parser = CaptureParser(savedPlaceNames: places.map(\.name))
         let phrase = parser.classify(place) ?? PlacePhrase(text: TextNormalizer.titleCase(place), spoken: place, match: .freeform, isNear: false)
 
+        let text = CaptureParser.cleanNote(note)
         let target: PlaceTarget
         switch await PlaceResolver.resolve(phrase, savedPlaces: places) {
         case .resolved(let resolved):
             target = resolved
         case .choose(let options):
-            target = options.first?.target ?? .search(phrase.text)
+            // Never guess one of several places. "Any Hobbycraft" is a deliberate, broad choice and is
+            // said back to you; several different places wait for you to pick in the app.
+            if let any = options.first(where: { $0.target.kind == .search }) {
+                target = any.target
+            } else {
+                Self.leaveForLater(note: text, place: phrase.spoken)
+                let answer = "I found a few places called \(phrase.text). Open Pinscape to pick one; your note is waiting."
+                return .result(dialog: "\(answer)")
+            }
         case .needsSavedPlace(let category):
             let answer = "Pinscape doesn't know where \(category.displayName.lowercased()) is yet. Add it in Places first."
             return .result(dialog: "\(answer)")
@@ -41,10 +50,30 @@ struct QuickPinIntent: AppIntent {
             target = .search(phrase.text)
         }
 
-        let text = CaptureParser.cleanNote(note)
-        PinActions.add(text: text, place: target, isAmbient: false, capturedByVoice: true, source: .siri)
+        do {
+            try PinActions.add(text: text, place: target, isAmbient: false, capturedByVoice: true, source: .siri)
+        } catch {
+            let answer = "Pinscape couldn't save that. Open the app to see why."
+            return .result(dialog: "\(answer)")
+        }
         ActionButtonTip.recordPinDropped()
-        return .result(dialog: "\(SurfacingPolicy.confirmation(place: target.title, note: text))")
+        let place = target.kind == .search ? "any \(target.title)" : target.title
+        return .result(dialog: "\(SurfacingPolicy.confirmation(place: place, note: text))")
+    }
+
+    /// Opens the capture screen with this note and place filled in, next time Pinscape comes forward.
+    private static func leaveForLater(note: String, place: String) {
+        var components = URLComponents()
+        components.scheme = "pinscape"
+        components.host = "capture"
+        components.queryItems = [
+            URLQueryItem(name: "place", value: place),
+            URLQueryItem(name: "text", value: note),
+            URLQueryItem(name: "source", value: PinSource.siri.rawValue),
+        ]
+        if let url = components.url {
+            AppGroup.defaults.set(url.absoluteString, forKey: SharedKeys.pendingRoute)
+        }
     }
 }
 

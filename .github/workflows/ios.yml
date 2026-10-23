@@ -52,6 +52,8 @@ jobs:
           echo "UDID=$UDID" >> "$GITHUB_ENV"
           echo "Using $DEVICE ($UDID)"
 
+      # xcodebuild's own exit status decides each step (pipefail through tee); -quiet keeps the log to
+      # warnings and errors, and the full logs are uploaded if anything fails.
       - name: Build app
         run: |
           set -o pipefail
@@ -61,15 +63,11 @@ jobs:
             -configuration Debug \
             -destination "id=$UDID" \
             -derivedDataPath build \
+            -quiet \
             CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tee build.log | grep -E "(error|warning: unre|BUILD)" || true
-          grep -q "BUILD SUCCEEDED" build.log
+            2>&1 | tee build.log
 
-      - name: Show build errors
-        if: failure()
-        run: grep -E "error:" build.log | sort -u | head -150 || true
-
-      - name: Unit tests
+      - name: Unit tests (core logic, StoreKit, persistence, capture)
         run: |
           set -o pipefail
           xcodebuild test \
@@ -77,9 +75,24 @@ jobs:
             -scheme Pinscape \
             -destination "id=$UDID" \
             -derivedDataPath build \
+            -resultBundlePath TestResults.xcresult \
+            -quiet \
             CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tee test.log | grep -E "(error:|Test Case .* failed|Executed|TEST)" || true
-          grep -q "TEST SUCCEEDED" test.log
+            2>&1 | tee test.log
+
+      - name: Summarise failures
+        if: failure()
+        run: grep -hE "error:|failed" build.log test.log 2>/dev/null | sort -u | head -150 || true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-logs
+          path: |
+            build.log
+            test.log
+            TestResults.xcresult
+          if-no-files-found: ignore
 
       - name: Screenshots
         timeout-minutes: 15
@@ -140,3 +153,43 @@ jobs:
           git add .
           git commit -q -m "Screenshots for ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" ci/screenshots
+
+  release:
+    name: Release archive (device, unsigned)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Archive all three targets for iOS devices
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Pinscape.xcodeproj \
+            -scheme Pinscape \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/Pinscape.xcarchive \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee archive.log
+
+      - name: Check the archive's contents
+        run: |
+          APP=build/Pinscape.xcarchive/Products/Applications/Pinscape.app
+          for item in PlugIns/PinscapeWidgets.appex PlugIns/PinscapeShare.appex PinDrop.wav PrivacyInfo.xcprivacy Assets.car; do
+            test -e "$APP/$item" || { echo "::error::Missing from archive: $item"; exit 1; }
+          done
+          /usr/libexec/PlistBuddy -c "Print :NSSupportsLiveActivities" "$APP/Info.plist"
+          echo "Archive contains the app, both extensions and their resources."
+
+      - name: Summarise failures
+        if: failure()
+        run: grep -hE "error:" archive.log 2>/dev/null | sort -u | head -150 || true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: archive-log
+          path: archive.log
+          if-no-files-found: ignore

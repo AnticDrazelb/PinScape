@@ -22,15 +22,36 @@ final class PlaceSearch {
         }
     }
 
+    /// Branches found for one search.
+    struct BranchLookup {
+        var results: [RegionCandidate]
+        /// False when Apple Maps couldn't be reached and older results (or none) were used instead.
+        var isFresh: Bool
+    }
+
+    /// Older results are only worth reusing if they're from around here and not too old.
+    private static let staleReuseDistance: Double = 5_000
+    private static let staleReuseAge: TimeInterval = 3 * 24 * 60 * 60
+
     /// The closest branches of a chain, or places of a kind, around a location.
-    func branches(for spec: PlaceSearchSpec, near location: CLLocation, radius: CLLocationDistance = 8_000, limit: Int = 8) async -> [RegionCandidate] {
+    func branches(for spec: PlaceSearchSpec, near location: CLLocation, radius: CLLocationDistance = 8_000, limit: Int = 8) async -> BranchLookup {
         let here = GeoPoint(location.coordinate)
         if let entry = cache[spec.key], entry.center.distance(to: here) < 1_500, Date().timeIntervalSince(entry.date) < 12 * 60 * 60 {
-            return entry.results
+            return BranchLookup(results: entry.results, isFresh: true)
         }
 
-        let items = await search(spec.query, near: location.coordinate, radius: radius, pointsOfInterestOnly: true)
-        guard !items.isEmpty else { return cache[spec.key]?.results ?? [] }
+        let items: [MKMapItem]
+        do {
+            items = try await searchItems(spec.query, near: location.coordinate, radius: radius, pointsOfInterestOnly: true)
+        } catch {
+            // Couldn't search (offline, throttled). A recent nearby answer beats nothing; an old or
+            // far-away one would watch the wrong shops.
+            Diagnostics.record(.searchFailed, "\(spec.key.split(separator: ":").first ?? ""): \(error.localizedDescription)")
+            if let entry = cache[spec.key], entry.center.distance(to: here) < Self.staleReuseDistance, Date().timeIntervalSince(entry.date) < Self.staleReuseAge {
+                return BranchLookup(results: entry.results, isFresh: false)
+            }
+            return BranchLookup(results: [], isFresh: false)
+        }
 
         let category = spec.category ?? .other
         var results: [RegionCandidate] = []
@@ -49,13 +70,19 @@ final class PlaceSearch {
         results.sort { $0.center.distance(to: here) < $1.center.distance(to: here) }
         results = Array(results.prefix(limit))
 
+        // A real "none near here" is an answer too, and is cached like any other.
         cache[spec.key] = Entry(center: here, date: Date(), results: results)
         persist()
-        return results
+        return BranchLookup(results: results, isFresh: true)
     }
 
-    /// A plain Apple Maps search around a point.
+    /// A plain Apple Maps search around a point. Errors become an empty list; use `searchItems` to tell them apart.
     func search(_ query: String, near center: CLLocationCoordinate2D?, radius: CLLocationDistance = 10_000, pointsOfInterestOnly: Bool = false) async -> [MKMapItem] {
+        (try? await searchItems(query, near: center, radius: radius, pointsOfInterestOnly: pointsOfInterestOnly)) ?? []
+    }
+
+    /// An Apple Maps search that returns an empty list when nothing matches, and throws when the search itself failed.
+    func searchItems(_ query: String, near center: CLLocationCoordinate2D?, radius: CLLocationDistance = 10_000, pointsOfInterestOnly: Bool = false) async throws -> [MKMapItem] {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         if let center {
@@ -63,9 +90,8 @@ final class PlaceSearch {
         }
         request.resultTypes = pointsOfInterestOnly ? .pointOfInterest : [.pointOfInterest, .address]
         do {
-            let response = try await MKLocalSearch(request: request).start()
-            return response.mapItems
-        } catch {
+            return try await MKLocalSearch(request: request).start().mapItems
+        } catch let error as MKError where error.code == .placemarkNotFound {
             return []
         }
     }

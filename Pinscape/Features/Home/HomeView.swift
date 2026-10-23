@@ -42,6 +42,7 @@ struct HomeView: View {
                     HomeMapCard(markers: mapMarkers, armed: pins.filter(\.isArmed).count)
                         .contentShape(Rectangle())
                         .onTapGesture { model.sheet = .map }
+                        .accessibilityAction { model.sheet = .map }
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -201,7 +202,7 @@ struct HomeView: View {
                     symbol: "location.circle.fill",
                     tint: .blue,
                     title: engine.hasAccess ? "Allow “Always” to be reminded" : "Let Pinscape know where you are",
-                    message: "Pins surface when you arrive, even with the app closed. Your location never leaves this iPhone.",
+                    message: "Pins surface when you arrive, even with the app closed. Pinscape keeps no location history and has no servers.",
                     action: engine.hasAccess ? "Change to Always" : "Allow Location"
                 ) {
                     engine.requestAccess()

@@ -12,7 +12,8 @@ struct TripSuggestion: Identifiable, Hashable {
     var center: GeoPoint
 }
 
-/// Reads your calendar on device to spot trips, so Pinscape can ask
+/// Reads your calendar on device to spot trips (looking up an event's location in Apple Maps
+/// when it has no coordinates), so Pinscape can ask
 /// "You're going to Bristol on Saturday. Any pins to drop?"
 @MainActor
 @Observable

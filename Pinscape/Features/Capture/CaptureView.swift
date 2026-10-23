@@ -50,12 +50,25 @@ struct CaptureView: View {
                     .transition(.scale.combined(with: .opacity))
                 }
 
+                if let error = model.saveError {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .glassSurface(in: Capsule(), tint: .red)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
                 inputBar
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
                     .padding(.top, typing ? 14 : 0)
             }
             .animation(.smooth(duration: 0.35), value: model.hasContent)
+            .animation(.snappy, value: model.saveError)
             .animation(.smooth(duration: 0.3), value: typing)
 
             if model.stage == .saved {
@@ -89,6 +102,9 @@ struct CaptureView: View {
                 app.didCapture(pin)
                 dismiss()
             }
+        }
+        .onChange(of: model.hitPinLimit) { _, hit in
+            if hit { showPaywall() }
         }
         .onChange(of: typing) { _, isTyping in
             if isTyping {
@@ -228,16 +244,20 @@ struct CaptureView: View {
 
     private func save() {
         guard model.canSave else {
-            if model.hasContent, model.place == nil { showPicker = true }
+            if model.hasContent, model.place == nil, !model.needsChoice, !model.isResolving { showPicker = true }
             return
         }
         typing = false
-        if !model.save() {
-            dismiss()
-            Task {
-                try? await Task.sleep(for: .milliseconds(400))
-                app.sheet = .paywall(.pinLimit)
-            }
+        if model.save() == .needsPro {
+            showPaywall()
+        }
+    }
+
+    private func showPaywall() {
+        dismiss()
+        Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            app.sheet = .paywall(.pinLimit)
         }
     }
 }
@@ -322,12 +342,14 @@ private struct PreviewCard: View {
     private var placeTitle: String {
         if let place = model.place { return place.title }
         if model.isResolving, let heard = model.heardPlace { return "Finding \(heard)…" }
+        if model.needsChoice, let heard = model.heardPlace { return "Which \(heard)?" }
         if let missing = model.missingPlace { return "Where's \(missing.displayName.lowercased())?" }
         return "Where?"
     }
 
     private var placeSubtitle: String {
         if let place = model.place { return place.summary }
+        if model.needsChoice { return "A few places match. Pick one below." }
         if model.missingPlace != nil { return "Tap to save it once" }
         return "Tap to choose a place"
     }

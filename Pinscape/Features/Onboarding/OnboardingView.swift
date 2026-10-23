@@ -221,7 +221,7 @@ private struct PermissionsPage: View {
     @Binding var notificationsOn: Bool
 
     var body: some View {
-        OnboardingPage(title: "Private by design", message: "Voice is transcribed on your iPhone. Pins never leave it. iOS only tells Pinscape when you've arrived somewhere you pinned.") {
+        OnboardingPage(title: "Private by design", message: "Your voice is transcribed on your iPhone and your pins stay on it. iOS tells Pinscape only when you arrive somewhere you pinned. Finding shops uses Apple Maps.") {
             VStack(spacing: 12) {
                 PermissionButton(symbol: "location.fill", title: "Location", detail: "Choose “Always” so pins can find you", done: engine.canSurfaceInBackground) {
                     engine.requestAccess()
@@ -231,7 +231,7 @@ private struct PermissionsPage: View {
                 }
                 HStack(spacing: 8) {
                     Image(systemName: "lock.fill")
-                    Text("No account. No cloud. No tracking.")
+                    Text("No account. No Pinscape servers. No analytics.")
                 }
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.white.opacity(0.6))

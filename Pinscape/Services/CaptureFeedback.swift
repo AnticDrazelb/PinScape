@@ -31,6 +31,10 @@ enum CaptureFeedback {
         }
     }
 
+    static func failed() {
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
+    }
+
     static func undone() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }

@@ -18,6 +18,8 @@ final class ShareModel {
     private(set) var isLoading = true
     private(set) var saved = false
     private(set) var limitReached = false
+    /// Why the last save failed, if it did. Nothing was stored.
+    var errorMessage: String? = nil
     let savedPlaces: [SavedPlace]
 
     init() {
@@ -33,11 +35,13 @@ final class ShareModel {
     }
 
     var canSave: Bool {
-        place != nil && !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !saved
+        PinStore.isWritable && place != nil && !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !saved
     }
 
     func load(_ items: [NSExtensionItem]) async {
         defer { isLoading = false }
+        // Check what's been bought now, rather than trusting what the app last saw.
+        await Entitlements.refresh()
         var texts: [String] = []
         for item in items {
             if let title = item.attributedContentText?.string, !title.isEmpty {
@@ -94,8 +98,12 @@ final class ShareModel {
             limitReached = true
             return
         }
-        PinActions.add(text: CaptureParser.cleanNote(note), place: place, isAmbient: isAmbient, capturedByVoice: false, source: .share)
-        saved = true
+        do {
+            try PinActions.add(text: CaptureParser.cleanNote(note), place: place, isAmbient: isAmbient, capturedByVoice: false, source: .share)
+            saved = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     /// A place typed by hand: a known shop, a kind of place, one of yours, or a search.

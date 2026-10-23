@@ -6,21 +6,19 @@ import WidgetKit
 enum ArrivalCoordinator {
     static func arrived(at region: PlannedRegion) async {
         let now = Date()
-        let places = PinActions.savedPlaces()
+        let pins = PinActions.activePins()
         let rest = PinscapeSettings.everyVisitRestHours * 60 * 60
-        let matching = PinActions.activePins().filter {
-            PinActions.resolvedTarget(for: $0, places: places).matches(regionKey: region.candidate.key)
-        }
-        let due = matching.filter {
-            SurfacingPolicy.shouldSurface(isAmbient: $0.isAmbient, isCompleted: $0.isCompleted, createdAt: $0.createdAt, lastSurfacedAt: $0.lastSurfacedAt, snoozedUntil: $0.snoozedUntil, now: now, rest: rest)
-        }
-        guard !due.isEmpty else { return }
+        let outcome = SurfacingPolicy.arrival(atRegionKey: region.candidate.key, pins: PinActions.snapshots(of: pins, places: PinActions.savedPlaces()), now: now, rest: rest)
+        guard !outcome.surface.isEmpty else { return }
+        let surfacing = Set(outcome.surface)
+        let due = pins.filter { surfacing.contains($0.id) }
 
         for pin in due {
             pin.lastSurfacedAt = now
             pin.surfaceCount += 1
         }
         PinActions.save()
+        Diagnostics.record(.arrival, "\(due.count) pin(s)")
 
         let visit = Visit(regionID: region.id, placeKey: region.candidate.key, title: region.candidate.title, subtitle: region.candidate.subtitle, symbol: region.candidate.symbol, colorHex: region.candidate.colorHex, arrivedAt: now, pinIDs: due.map(\.id))
         VisitStore.begin(visit)
@@ -28,6 +26,13 @@ enum ArrivalCoordinator {
         await LiveActivityController.start(for: visit, pins: due)
         WidgetCenter.shared.reloadAllTimelines()
         AppModel.shared.refreshVisits()
+
+        if outcome.disarms {
+            // Next-visit pins just disarmed. Release their places now, while iOS still has the app
+            // awake, so the slots go to pins that are still waiting.
+            AppGroup.defaults.set(true, forKey: SharedKeys.needsReplan)
+            await LocationEngine.shared.replan()
+        }
     }
 
     static func left(_ region: PlannedRegion) async {

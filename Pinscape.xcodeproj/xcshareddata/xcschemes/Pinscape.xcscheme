@@ -29,6 +29,20 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "9389737C5D84CA8B3BAA9504"
+               BuildableName = "PinscapeAppTests.xctest"
+               BlueprintName = "PinscapeAppTests"
+               ReferencedContainer = "container:Pinscape.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "E31B1235547F9A60BBC7FDEB"
                BuildableName = "PinscapeTests.xctest"
                BlueprintName = "PinscapeTests"
@@ -62,6 +76,17 @@
                BlueprintIdentifier = "E31B1235547F9A60BBC7FDEB"
                BuildableName = "PinscapeTests.xctest"
                BlueprintName = "PinscapeTests"
+               ReferencedContainer = "container:Pinscape.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "9389737C5D84CA8B3BAA9504"
+               BuildableName = "PinscapeAppTests.xctest"
+               BlueprintName = "PinscapeAppTests"
                ReferencedContainer = "container:Pinscape.xcodeproj">
             </BuildableReference>
          </TestableReference>

@@ -22,12 +22,17 @@ struct PlaceEditorView: View {
     @State private var position: MapCameraPosition = .automatic
     @State private var stickerMessage: String?
 
-    static let symbols = [
-        "house.fill", "building.2.fill", "figure.strengthtraining.traditional", "heart.fill", "cup.and.saucer.fill",
-        "tree.fill", "graduationcap.fill", "briefcase.fill", "cart.fill", "fork.knife", "bed.double.fill", "car.fill",
-        "book.fill", "music.note", "pawprint.fill", "star.fill", "refrigerator.fill", "shippingbox.fill", "desktopcomputer", "tag.fill",
+    static let symbols: [(symbol: String, name: String)] = [
+        ("house.fill", "Home"), ("building.2.fill", "Office"), ("figure.strengthtraining.traditional", "Gym"), ("heart.fill", "Heart"),
+        ("cup.and.saucer.fill", "Café"), ("tree.fill", "Park"), ("graduationcap.fill", "School"), ("briefcase.fill", "Work"),
+        ("cart.fill", "Shopping"), ("fork.knife", "Food"), ("bed.double.fill", "Bed"), ("car.fill", "Car"), ("book.fill", "Book"),
+        ("music.note", "Music"), ("pawprint.fill", "Pets"), ("star.fill", "Star"), ("refrigerator.fill", "Kitchen"),
+        ("shippingbox.fill", "Storage"), ("desktopcomputer", "Desk"), ("tag.fill", "Tag"),
     ]
-    static let colors = ["#FF4F5A", "#FF9F0A", "#F2B705", "#34C759", "#30B0C7", "#0A84FF", "#5E5CE6", "#BF5AF2", "#FF6FA8", "#A2845E", "#64748B"]
+    static let colors: [(hex: String, name: String)] = [
+        ("#FF4F5A", "Coral"), ("#FF9F0A", "Orange"), ("#F2B705", "Yellow"), ("#34C759", "Green"), ("#30B0C7", "Teal"), ("#0A84FF", "Blue"),
+        ("#5E5CE6", "Indigo"), ("#BF5AF2", "Purple"), ("#FF6FA8", "Pink"), ("#A2845E", "Brown"), ("#64748B", "Slate"),
+    ]
 
     init(place: SavedPlace?, kind: SavedPlaceKind) {
         self.place = place
@@ -121,29 +126,40 @@ struct PlaceEditorView: View {
         VStack(alignment: .leading, spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    ForEach(Self.colors, id: \.self) { hex in
-                        Circle()
-                            .fill(Color(hex: hex).gradient)
-                            .frame(width: 28, height: 28)
-                            .overlay {
-                                if hex == colorHex {
-                                    Circle().strokeBorder(.white, lineWidth: 2.5).padding(3)
+                    ForEach(Self.colors, id: \.hex) { color in
+                        Button {
+                            colorHex = color.hex
+                        } label: {
+                            Circle()
+                                .fill(Color(hex: color.hex).gradient)
+                                .frame(width: 28, height: 28)
+                                .overlay {
+                                    if color.hex == colorHex {
+                                        Circle().strokeBorder(.white, lineWidth: 2.5).padding(3)
+                                    }
                                 }
-                            }
-                            .onTapGesture { colorHex = hex }
-                            .accessibilityAddTraits(hex == colorHex ? [.isButton, .isSelected] : .isButton)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(color.name)
+                        .accessibilityAddTraits(color.hex == colorHex ? .isSelected : [])
                     }
                 }
                 .padding(.vertical, 2)
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7), spacing: 10) {
-                ForEach(Self.symbols, id: \.self) { candidate in
-                    Image(systemName: candidate)
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 36, height: 36)
-                        .foregroundStyle(candidate == symbol ? .white : .secondary)
-                        .background(Circle().fill(candidate == symbol ? Color(hex: colorHex) : Color.primary.opacity(0.06)))
-                        .onTapGesture { symbol = candidate }
+                ForEach(Self.symbols, id: \.symbol) { candidate in
+                    Button {
+                        symbol = candidate.symbol
+                    } label: {
+                        Image(systemName: candidate.symbol)
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(width: 36, height: 36)
+                            .foregroundStyle(candidate.symbol == symbol ? .white : .secondary)
+                            .background(Circle().fill(candidate.symbol == symbol ? Color(hex: colorHex) : Color.primary.opacity(0.06)))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(candidate.name)
+                    .accessibilityAddTraits(candidate.symbol == symbol ? .isSelected : [])
                 }
             }
         }
@@ -230,10 +246,13 @@ struct PlaceEditorView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], spacing: 8) {
                 ForEach(BrandCatalog.all.filter { $0.market == CaptureModel.market }, id: \.name) { brand in
                     let selected = members.contains(brand.name)
-                    PlaceChip(title: brand.name, symbol: brand.category.symbol, colorHex: brand.category.colorHex, selected: selected)
-                        .onTapGesture {
-                            if selected { members.remove(brand.name) } else { members.insert(brand.name) }
-                        }
+                    Button {
+                        if selected { members.remove(brand.name) } else { members.insert(brand.name) }
+                    } label: {
+                        PlaceChip(title: brand.name, symbol: brand.category.symbol, colorHex: brand.category.colorHex, selected: selected)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
             .padding(.vertical, 6)

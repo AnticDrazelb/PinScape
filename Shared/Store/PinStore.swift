@@ -2,7 +2,16 @@ import Foundation
 import SwiftData
 import WidgetKit
 
-/// The on-device database. Nothing here ever leaves the phone: no CloudKit, no sync, no analytics.
+/// Whether pins can be read and written.
+enum StoreHealth: Equatable {
+    case ready
+    /// Sample data for screenshots and previews; nothing is kept.
+    case demo
+    /// The on-device store couldn't be opened. Nothing can be saved until it can.
+    case unavailable(String)
+}
+
+/// The on-device database. No CloudKit, no sync, no Pinscape server.
 /// The store lives in the App Group container under iOS Data Protection, so it is encrypted at rest
 /// and readable after first unlock, which lets a geofence wake Pinscape while the phone is locked.
 enum PinStore {
@@ -10,30 +19,80 @@ enum PinStore {
     /// Demo data as a Pro user, unless launched with `-PinscapeFree YES` to show the free tier.
     static let isDemoPro: Bool = isDemo && !ProcessInfo.processInfo.arguments.contains("-PinscapeFree")
 
-    static let container: ModelContainer = makeContainer()
+    static let schema = Schema([Pin.self, SavedPlace.self])
+
+    /// Replaced only by `reopenIfUnavailable()`, on the main actor in the app process.
+    private static var setup: (container: ModelContainer, health: StoreHealth) = makeContainer()
+
+    static var container: ModelContainer { setup.container }
+    static var health: StoreHealth { setup.health }
+
+    /// Tries again after a failed open, e.g. when iOS woke Pinscape for an arrival before the phone's
+    /// first unlock after a restart, while protected files were still unreadable. Returns true if the
+    /// store just became available.
+    @MainActor
+    static func reopenIfUnavailable() -> Bool {
+        guard case .unavailable = setup.health else { return false }
+        setup = makeContainer()
+        return isWritable
+    }
+
+    /// False when the store failed to open. Every write checks this, so a thought is never
+    /// "saved" into memory that disappears when the app quits.
+    static var isWritable: Bool {
+        if case .unavailable = health { return false }
+        return true
+    }
 
     @MainActor
     static var context: ModelContext { container.mainContext }
 
-    private static func makeContainer() -> ModelContainer {
-        let schema = Schema([Pin.self, SavedPlace.self])
-        if !isDemo {
-            do {
-                let directory = AppGroup.containerURL.appendingPathComponent("Pinscape", isDirectory: true)
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [
-                    .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication,
-                ])
-                let configuration = ModelConfiguration(schema: schema, url: directory.appendingPathComponent("Pinscape.store"), cloudKitDatabase: .none)
-                return try ModelContainer(for: schema, configurations: [configuration])
-            } catch {
-                print("Pinscape: falling back to an in-memory store: \(error)")
-            }
+    /// Opens (or creates) the persistent store at a location. Separate so tests can point it at a temporary file.
+    static func openPersistentContainer(at url: URL) throws -> ModelContainer {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: [
+            .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication,
+        ])
+        let configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+        return try ModelContainer(for: schema, configurations: [configuration])
+    }
+
+    private static func makeContainer() -> (container: ModelContainer, health: StoreHealth) {
+        if isDemo {
+            return (emptyContainer(), .demo)
         }
+        do {
+            let url = try AppGroup.containerURL()
+                .appendingPathComponent("Pinscape", isDirectory: true)
+                .appendingPathComponent("Pinscape.store")
+            return (try openPersistentContainer(at: url), .ready)
+        } catch {
+            // Never quietly carry on with a throwaway store: the app shows what went wrong and
+            // refuses to save, and the existing store file is left untouched for the next launch.
+            Diagnostics.record(.storeUnavailable, error.localizedDescription)
+            return (emptyContainer(), .unavailable(error.localizedDescription))
+        }
+    }
+
+    /// An empty in-memory container: demo data, or a read-only stand-in while the real store is unavailable.
+    private static func emptyContainer() -> ModelContainer {
         let memory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         do {
             return try ModelContainer(for: schema, configurations: [memory])
         } catch {
-            fatalError("Pinscape could not create its store: \(error)")
+            fatalError("Pinscape could not create an in-memory store: \(error)")
+        }
+    }
+}
+
+/// Why a write didn't happen.
+enum PersistenceError: LocalizedError {
+    case storeUnavailable
+    case saveFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .storeUnavailable: "Pinscape can't open your pins right now, so nothing was saved."
+        case .saveFailed(let reason): "Pinscape couldn't save that: \(reason)"
         }
     }
 }
@@ -45,6 +104,8 @@ enum PinscapeHooks {
     static var pinsChanged: (@MainActor () -> Void)?
     /// Open a route in the app, e.g. "capture".
     static var openRoute: (@MainActor (String) -> Void)?
+    /// A change couldn't be saved; the app tells you rather than pretending it worked.
+    static var writeFailed: (@MainActor (String) -> Void)?
 }
 
 /// Reads and writes pins from any process.
@@ -95,11 +156,14 @@ enum PinActions {
         PinscapePlan.isPro || activePinCount() < PinscapePlan.freeActivePins
     }
 
+    /// Saves a new pin. Throws rather than returning a pin that only exists in memory.
     @discardableResult
-    static func add(text: String, place: PlaceTarget, isAmbient: Bool, capturedByVoice: Bool, source: PinSource) -> Pin {
+    static func add(text: String, place: PlaceTarget, isAmbient: Bool, capturedByVoice: Bool, source: PinSource) throws -> Pin {
+        guard PinStore.isWritable else { throw PersistenceError.storeUnavailable }
         let pin = Pin(text: text, place: place, isAmbient: isAmbient, capturedByVoice: capturedByVoice, source: source)
         PinStore.context.insert(pin)
-        didChange()
+        try commit()
+        afterChange()
         return pin
     }
 
@@ -129,6 +193,13 @@ enum PinActions {
         didChange()
     }
 
+    /// Database-free copies of pins for the planner and arrival logic.
+    static func snapshots(of pins: [Pin], places: [SavedPlace]) -> [PinSnapshot] {
+        pins.map { pin in
+            PinSnapshot(id: pin.id, target: resolvedTarget(for: pin, places: places), isAmbient: pin.isAmbient, isCompleted: pin.isCompleted, createdAt: pin.createdAt, lastSurfacedAt: pin.lastSurfacedAt, snoozedUntil: pin.snoozedUntil)
+        }
+    }
+
     /// The place a pin points at, with a saved place's latest position and size.
     static func resolvedTarget(for pin: Pin, places: [SavedPlace]) -> PlaceTarget {
         var target = pin.place
@@ -145,13 +216,43 @@ enum PinActions {
         return target
     }
 
-    static func save() {
-        try? PinStore.context.save()
+    /// Writes pending changes, or rolls them back and throws.
+    static func commit() throws {
+        guard PinStore.isWritable else {
+            PinStore.context.rollback()
+            throw PersistenceError.storeUnavailable
+        }
+        do {
+            try PinStore.context.save()
+        } catch {
+            PinStore.context.rollback()
+            Diagnostics.record(.saveFailed, error.localizedDescription)
+            throw PersistenceError.saveFailed(error.localizedDescription)
+        }
     }
 
-    /// Persists, refreshes widgets, and asks the app to re-plan geofences.
-    static func didChange() {
-        save()
+    /// Saves, reporting a failure to the app instead of swallowing it. Returns whether it was saved.
+    @discardableResult
+    static func save() -> Bool {
+        do {
+            try commit()
+            return true
+        } catch {
+            PinscapeHooks.writeFailed?(error.localizedDescription)
+            return false
+        }
+    }
+
+    /// Saves, then refreshes widgets and asks the app to re-plan geofences.
+    @discardableResult
+    static func didChange() -> Bool {
+        let saved = save()
+        afterChange()
+        return saved
+    }
+
+    /// Everything that depends on pins: widgets and the geofence plan.
+    static func afterChange() {
         AppGroup.defaults.set(true, forKey: SharedKeys.needsReplan)
         WidgetCenter.shared.reloadAllTimelines()
         PinscapeHooks.pinsChanged?()

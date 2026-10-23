@@ -59,7 +59,7 @@ struct SettingsView: View {
                     Text("New pins remind you on your next visit, then wait in your list. Every-visit pins come back each time, resting in between so popping in and out doesn't nag.")
                 }
 
-                Section("Permissions") {
+                Section {
                     PermissionRow(title: "Location", symbol: "location.fill", color: .blue, status: locationText, ok: engine.canSurfaceInBackground) {
                         engine.requestAccess()
                     }
@@ -91,6 +91,10 @@ struct SettingsView: View {
                             }
                         }
                     }
+                } header: {
+                    Text("Permissions")
+                } footer: {
+                    Text(permissionsFooter)
                 }
 
                 Section {
@@ -129,6 +133,11 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
                     LabeledContent("Places armed", value: "\(engine.regions.count) of 20")
+                    NavigationLink {
+                        DiagnosticsView()
+                    } label: {
+                        SettingLabel("Diagnostics", detail: "Why didn't a pin go off?", symbol: "stethoscope", color: .gray)
+                    }
                 } footer: {
                     Text("Pinscape · Leave thoughts in the real world.")
                         .frame(maxWidth: .infinity)
@@ -197,6 +206,17 @@ struct SettingsView: View {
             .cardBackground()
         }
         .buttonStyle(.plain)
+    }
+
+    private var permissionsFooter: String {
+        switch engine.authorization {
+        case .authorizedAlways:
+            return "Pins can find you with Pinscape closed."
+        case .authorizedWhenInUse:
+            return "With “While Using”, pins only surface while Pinscape is open on screen. Choose “Always” so they find you when you arrive."
+        default:
+            return "Without location, Pinscape can't tell when you arrive anywhere."
+        }
     }
 
     private var proCardDetail: String {
@@ -293,9 +313,10 @@ private struct PermissionRow: View {
 /// What Pinscape does and doesn't do with your data, in plain words.
 struct PrivacyCard: View {
     private let points: [(String, String)] = [
-        ("waveform", "Voice is transcribed on your iPhone with Apple's on-device speech model."),
-        ("lock.iphone", "Pins and places live in an encrypted on-device store. No account, no cloud, no sync."),
-        ("location.slash", "No tracking. iOS tells Pinscape only that you arrived at a watched place."),
+        ("waveform", "Voice is transcribed by Apple's on-device speech model. If that isn't available for your language, you type instead; audio is never sent anywhere."),
+        ("lock.iphone", "Pins and places live in an encrypted store on this iPhone. No account, no Pinscape servers, no sync."),
+        ("location.slash", "No location history. iOS watches your pinned places and tells Pinscape only when you arrive at one."),
+        ("map", "Finding shops and addresses uses Apple Maps, which sees each search and the area it's for, just as in the Maps app."),
         ("eye.slash", "No analytics, no ads, no feeds. Nobody else ever sees a pin."),
     ]
 
@@ -398,5 +419,99 @@ private struct HelpStep: View {
                 .foregroundStyle(color)
                 .textCase(nil)
         }
+    }
+}
+
+/// What happened recently, to answer "why didn't it remind me?" without guessing.
+/// Records events and times only, never what you wrote or where you were.
+struct DiagnosticsView: View {
+    @Environment(LocationEngine.self) private var engine
+    @State private var entries = Diagnostics.recent()
+    @State private var notifications: UNAuthorizationStatus = .notDetermined
+
+    var body: some View {
+        List {
+            Section("Now") {
+                LabeledContent("Pin store", value: storeText)
+                LabeledContent("Location", value: locationText)
+                LabeledContent("Notifications", value: notificationText)
+                LabeledContent("Places armed", value: "\(engine.regions.count) of 20")
+            }
+            Section {
+                if entries.isEmpty {
+                    Text("Nothing to report.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(entries) { entry in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 8) {
+                            Image(systemName: entry.event.isProblem ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                                .foregroundStyle(entry.event.isProblem ? .orange : .green)
+                            Text(entry.event.title)
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text(entry.date, format: .relative(presentation: .named))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        if !entry.detail.isEmpty {
+                            Text(entry.detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Recent")
+            } footer: {
+                Text("Kept on this iPhone. Records what happened and when, never what you wrote or where you were.")
+            }
+            Section {
+                ShareLink(item: report) {
+                    Label("Share report", systemImage: "square.and.arrow.up")
+                }
+                Button("Clear", role: .destructive) {
+                    Diagnostics.clear()
+                    entries = []
+                }
+            }
+        }
+        .navigationTitle("Diagnostics")
+        .refreshable { entries = Diagnostics.recent() }
+        .task { notifications = await NotificationManager.authorizationStatus() }
+    }
+
+    private var storeText: String {
+        switch PinStore.health {
+        case .ready: "OK"
+        case .demo: "Demo"
+        case .unavailable: "Can't open"
+        }
+    }
+
+    private var locationText: String {
+        switch engine.authorization {
+        case .authorizedAlways: "Always"
+        case .authorizedWhenInUse: "While Using"
+        case .denied, .restricted: "Off"
+        default: "Not asked"
+        }
+    }
+
+    private var notificationText: String {
+        switch notifications {
+        case .authorized, .provisional, .ephemeral: "On"
+        case .denied: "Off"
+        default: "Not asked"
+        }
+    }
+
+    private var report: String {
+        var lines = ["Pinscape diagnostics", "Store: \(storeText)", "Location: \(locationText)", "Notifications: \(notificationText)", "Places armed: \(engine.regions.count)", ""]
+        let formatter = ISO8601DateFormatter()
+        for entry in entries {
+            lines.append("\(formatter.string(from: entry.date))  \(entry.event.rawValue)  \(entry.detail)")
+        }
+        return lines.joined(separator: "\n")
     }
 }
