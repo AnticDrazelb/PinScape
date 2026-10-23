@@ -18,6 +18,8 @@ struct PinsEntry: TimelineEntry {
     let total: Int
     /// The place you're at, if any.
     let here: String?
+    /// The pins can't be read from here, e.g. an install without an App Group.
+    var isUnavailable = false
 
     static let sample = PinsEntry(date: .now, pins: [
         WidgetPin(id: UUID(), text: "Batteries and bin bags", place: "Tesco", symbol: "cart.fill", colorHex: "#34C759", isAmbient: false),
@@ -40,6 +42,9 @@ struct PinsProvider: TimelineProvider {
     }
 
     static func load() -> PinsEntry {
+        guard PinStore.isWritable else {
+            return PinsEntry(date: .now, pins: [], total: 0, here: nil, isUnavailable: true)
+        }
         let context = ModelContext(PinStore.container)
         let descriptor = FetchDescriptor<Pin>(
             predicate: #Predicate<Pin> { $0.completedAt == nil },
@@ -77,6 +82,34 @@ struct PinsWidgetView: View {
     let entry: PinsEntry
 
     var body: some View {
+        if entry.isUnavailable {
+            unavailable
+        } else {
+            content
+        }
+    }
+
+    /// Rather than "0 pins", which would look like your pins were gone.
+    @ViewBuilder
+    private var unavailable: some View {
+        if family == .accessoryInline {
+            Label("Open Pinscape", systemImage: "mappin.and.ellipse")
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Pinscape", systemImage: "mappin.and.ellipse")
+                    .font(.headline)
+                Text("Open the app to see your pins.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .containerBackground(for: .widget) { Color.clear }
+            .widgetURL(URL(string: "pinscape://open"))
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch family {
         case .accessoryInline:
             Label(entry.here.map { "At \($0)" } ?? "\(entry.total) pins waiting", systemImage: "mappin.and.ellipse")

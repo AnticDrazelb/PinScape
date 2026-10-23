@@ -2,54 +2,80 @@ import Foundation
 
 /// The container the app, widgets and share extension all read and write.
 enum AppGroup {
-    /// The group this build was made with, unless it was sideloaded: AltStore and SideStore re-sign
-    /// with a group registered to your Apple ID and list it under `ALTAppGroups`, in the app's
-    /// Info.plist (which an extension finds two folders up from its own bundle).
-    static let identifier: String = {
-        let app = Bundle.main.bundleURL.pathExtension == "appex"
-            ? Bundle(url: Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent())
-            : Bundle.main
-        for bundle in [Bundle.main, app].compactMap({ $0 }) {
-            if let sideloaded = (bundle.object(forInfoDictionaryKey: "ALTAppGroups") as? [String])?.first {
-                return sideloaded
+    /// The group this build was made with.
+    static let configuredIdentifier: String = (Bundle.main.object(forInfoDictionaryKey: "PinscapeAppGroup") as? String) ?? "group.com.pinscape.app"
+
+    /// The App Group this install can really use: usually the one it was built with, but a
+    /// sideloading tool re-signs with its own. AltStore and SideStore list theirs under
+    /// `ALTAppGroups`; others only in the provisioning profile they embed. Nil when the install
+    /// has no App Group at all, which some tools do.
+    static let sharedIdentifier: String? = candidates().first { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) != nil }
+
+    /// Names the preferences suite too, which works (unshared) even without an App Group.
+    static var identifier: String { sharedIdentifier ?? configuredIdentifier }
+
+    /// Whether the app, widgets and Share Sheet can see the same pins in this install.
+    static var isShared: Bool { sharedIdentifier != nil }
+
+    static let isExtension: Bool = Bundle.main.bundleURL.pathExtension == "appex"
+
+    private static func candidates() -> [String] {
+        // An extension also looks at the app it's inside, two folders up.
+        let app = Bundle(url: Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent())
+        let bundles = isExtension ? [Bundle.main, app].compactMap { $0 } : [Bundle.main]
+        var identifiers = [configuredIdentifier]
+        for bundle in bundles {
+            identifiers += bundle.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] ?? []
+            if let url = bundle.url(forResource: "embedded", withExtension: "mobileprovision"), let data = try? Data(contentsOf: url) {
+                identifiers += ProvisioningProfile.appGroups(in: data)
             }
         }
-        return (Bundle.main.object(forInfoDictionaryKey: "PinscapeAppGroup") as? String) ?? "group.com.pinscape.app"
-    }()
+        var seen = Set<String>()
+        return identifiers.filter { seen.insert($0).inserted }
+    }
 
-    struct MissingContainer: LocalizedError {
+    /// An extension in an install without an App Group can't reach the app's pins.
+    struct NotShared: LocalizedError {
+        var errorDescription: String? {
+            "This copy of Pinscape was installed without an App Group, so the widgets and Share Sheet can't reach your pins. Add them in the app instead."
+        }
+    }
+
+    struct BadSuiteName: LocalizedError {
         let identifier: String
         var errorDescription: String? {
-            "The shared App Group “\(identifier)” isn't available, so the app and its extensions can't share pins. Check the App Groups capability and provisioning profile."
+            "Pinscape's shared settings “\(identifier)” can't be opened. This build is misconfigured."
         }
     }
 
-    /// The shared container directory, after checking the shared preferences too.
+    /// Where pins live.
     ///
-    /// A signed build without the App Group entitlement would otherwise give the app, widgets and
-    /// share extension separate stores without anyone noticing, so in Release a missing container
-    /// is an error: the store reports it and nothing is saved. Debug builds (unsigned CI, previews)
-    /// fall back to the app's own sandbox.
+    /// Normally the App Group container that the app, widgets and Share Sheet share. In an install
+    /// without an App Group the app keeps pins in its own sandbox and Settings says sharing is
+    /// off. Extensions can't reach that, so they refuse to save rather than start a second store
+    /// that would drift from the app's.
     static func containerURL() throws -> URL {
-        guard sharedDefaults != nil else { throw MissingContainer(identifier: identifier) }
-        if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier) {
+        guard sharedDefaults != nil else { throw BadSuiteName(identifier: identifier) }
+        if let sharedIdentifier, let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: sharedIdentifier) {
             return url
         }
-        #if DEBUG
-        let fallback = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
-        return fallback
-        #else
-        throw MissingContainer(identifier: identifier)
+        #if !DEBUG
+        if isExtension { throw NotShared() }
         #endif
+        return try privateContainerURL()
     }
 
-    /// Preferences shared by every Pinscape process.
+    /// The process's own Application Support folder: the app's store when there's no App Group.
+    static func privateContainerURL() throws -> URL {
+        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    /// Preferences shared by every Pinscape process (or just the app's, without an App Group).
     ///
-    /// `UserDefaults(suiteName:)` only fails for a reserved name; a build missing the entitlement
-    /// gets a private suite instead. Both are caught by `containerURL()`, which makes the store
-    /// report the problem rather than letting the app and extensions quietly drift apart. The
-    /// fallback only keeps a misconfigured build running long enough to say so.
+    /// `UserDefaults(suiteName:)` only fails for a reserved name, which `containerURL()` reports so
+    /// the store refuses to open; the fallback only keeps such a build running long enough to say so.
     static let defaults: UserDefaults = sharedDefaults ?? .standard
     private static let sharedDefaults = UserDefaults(suiteName: identifier)
 }

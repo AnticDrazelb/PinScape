@@ -61,6 +61,27 @@ final class PersistenceTests: XCTestCase {
         XCTAssertTrue(try ModelContext(container).fetch(FetchDescriptor<Pin>()).isEmpty)
     }
 
+    /// Pins kept in the app's own sandbox (installed without an App Group) move into the shared
+    /// container when a later install has one, and never over an existing shared store.
+    func testPinsKeptWithoutAnAppGroupMoveIntoTheSharedStore() throws {
+        let privateURL = directory.appendingPathComponent("private/Pinscape/Pinscape.store")
+        do {
+            let container = try PinStore.openPersistentContainer(at: privateURL)
+            let context = ModelContext(container)
+            context.insert(Pin(text: "Batteries", place: tesco()))
+            try context.save()
+        }
+        try PinStore.adoptPrivateStore(from: privateURL, to: storeURL)
+
+        let shared = try ModelContext(PinStore.openPersistentContainer(at: storeURL)).fetch(FetchDescriptor<Pin>())
+        XCTAssertEqual(shared.map(\.text), ["Batteries"])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: privateURL.path), "moved, not copied")
+
+        // Nothing to move now, and a shared store that exists is never replaced.
+        try PinStore.adoptPrivateStore(from: privateURL, to: storeURL)
+        XCTAssertEqual(try ModelContext(PinStore.openPersistentContainer(at: storeURL)).fetch(FetchDescriptor<Pin>()).count, 1)
+    }
+
     func testDamagedStoreIsReportedAndLeftAlone() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let garbage = Data(repeating: 0xAB, count: 4096)

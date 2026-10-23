@@ -30,10 +30,12 @@
 		2E3AEB124175535F43127B0E /* StickerPinsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A557FC7BB6B1D5ACF3F5671 /* StickerPinsView.swift */; };
 		31303E4E8BA90ABCC2C11AA8 /* PinscapeShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 04B9E51AAD814622C07D166E /* PinscapeShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3165D3A0CCE050BA94926B9A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDAAA69573EF898578692E /* Theme.swift */; };
+		317CB30B83F89B0088E5C381 /* ProvisioningProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9F36DB9A8B075D3FE4D81C /* ProvisioningProfileTests.swift */; };
 		325F65DA7F7F83B5FA448E60 /* CalendarScout.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB6E6AF2DB34ECCED292EEF /* CalendarScout.swift */; };
 		3332A74847B74AC729D22AEA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F905F4E15CE2F6E188D5D37A /* PrivacyInfo.xcprivacy */; };
 		34A7CA238500AA16C2867682 /* Entitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214A82AFFAC8789D5BCF925D /* Entitlements.swift */; };
 		381F0C33B7261978C96B6DB5 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092A69FB934ECC94B3510946 /* ShareViewController.swift */; };
+		3C0CD0E69ED8C84BC1A1E4BD /* ProvisioningProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FC61BF7FD4BD2C97C29A99 /* ProvisioningProfile.swift */; };
 		3F6A890D6908859AEAB074EC /* GeofencePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 477677A40FC53F226289A870 /* GeofencePlanner.swift */; };
 		40D6C3C119EE8F8273E1F66A /* PlaceSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 418AF72A76602CA80C3DFB3C /* PlaceSuggester.swift */; };
 		42961492061DB3A7B20894FF /* ProStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA8F84C9123B9B197A27A574 /* ProStore.swift */; };
@@ -42,6 +44,7 @@
 		489CED3DDE6B17BA206CBE78 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D15F3190062F00C11BF8AEB /* PaywallView.swift */; };
 		4AA49239ECA0AD9E8C3C6747 /* ArrivalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CE65B5C2D73A562162C9468 /* ArrivalCoordinator.swift */; };
 		4CB5A58BB95DD3B339169FBA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F86742744D789BD9BDA2D /* SettingsView.swift */; };
+		51BC5B350E2FF709B4A07B4D /* ProvisioningProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FC61BF7FD4BD2C97C29A99 /* ProvisioningProfile.swift */; };
 		52939137507948C723E95E64 /* PinscapeWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24243A39EFFF9A340AA0A681 /* PinscapeWidgetsBundle.swift */; };
 		53E95C0BA73CAB14A3C14418 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0BCCEC166BF0B4EBD328C0 /* TextNormalizer.swift */; };
 		587F17A12A57EDFD0E5F4429 /* PinActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DE774A29A11E67BC196E30 /* PinActivityAttributes.swift */; };
@@ -66,6 +69,7 @@
 		8301F3B03164B35DF5F6BBB9 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2E2F91BC7F5EF615447C72 /* LiveActivityController.swift */; };
 		8EC35D845DC26A3F7D7B33C4 /* PinLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCFD0F03FACF638ADE0A7BE /* PinLiveActivity.swift */; };
 		8F5C7B7123F05AF9F259B991 /* GeoPoint+CoreLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107BE4DD79C204E8D5005401 /* GeoPoint+CoreLocation.swift */; };
+		8F65C4EEF574350831C50593 /* ProvisioningProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FC61BF7FD4BD2C97C29A99 /* ProvisioningProfile.swift */; };
 		8FC7F3913C68667D6E94BD9F /* CaptureParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077CFD0CBC944B435BE2FD17 /* CaptureParser.swift */; };
 		9355A42B59CE985FCBAA697B /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11DA4038D7E15F9CA0C95E2F /* AppGroup.swift */; };
 		95BE0F04B82F5FF41DED09D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A13F7149BCDC5D95A291360F /* Assets.xcassets */; };
@@ -97,6 +101,7 @@
 		BB6C48A4549735011A64E406 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0BCCEC166BF0B4EBD328C0 /* TextNormalizer.swift */; };
 		C425165CB5FABFBE5A74F0AA /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B4A0C4362C085D62D5EF93 /* Models.swift */; };
 		C45D6DAD7BF6065C3834EA94 /* BrandCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 767EC424F33602FE15637AEA /* BrandCatalog.swift */; };
+		C5E29BD0EECEC3E8A67D2D39 /* ProvisioningProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FC61BF7FD4BD2C97C29A99 /* ProvisioningProfile.swift */; };
 		C82645FB461E667CEF83E532 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B4A0C4362C085D62D5EF93 /* Models.swift */; };
 		C853F1EC80424AFE30F08FDB /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11DA4038D7E15F9CA0C95E2F /* AppGroup.swift */; };
 		C96D7879674788580D776D1E /* GeofencePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 477677A40FC53F226289A870 /* GeofencePlanner.swift */; };
@@ -203,6 +208,7 @@
 		5EEAB83508575D56AE1F8131 /* StickerReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerReader.swift; sourceTree = "<group>"; };
 		5FBDAAA69573EF898578692E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		657D9F23461D1261FDB1369B /* PinLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinLifecycle.swift; sourceTree = "<group>"; };
+		65FC61BF7FD4BD2C97C29A99 /* ProvisioningProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProvisioningProfile.swift; sourceTree = "<group>"; };
 		6624DA0534EFEE2FC45EC01B /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		69C145BDACD2353D04A8C6C4 /* CaptureModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModelTests.swift; sourceTree = "<group>"; };
 		6A557FC7BB6B1D5ACF3F5671 /* StickerPinsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerPinsView.swift; sourceTree = "<group>"; };
@@ -236,6 +242,7 @@
 		C6AB38F4647EEFEA06EBF35C /* PlaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceEditorView.swift; sourceTree = "<group>"; };
 		C9BC668FF7AB851BA666BB28 /* PlanRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanRecoveryTests.swift; sourceTree = "<group>"; };
 		CA8F84C9123B9B197A27A574 /* ProStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStore.swift; sourceTree = "<group>"; };
+		CA9F36DB9A8B075D3FE4D81C /* ProvisioningProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProvisioningProfileTests.swift; sourceTree = "<group>"; };
 		D526C6FE7EF84219D8202919 /* PlacesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesTests.swift; sourceTree = "<group>"; };
 		D5E2DDF22ECED03A43B16DFB /* CaptureControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureControl.swift; sourceTree = "<group>"; };
 		D6BA579A07E926708A67B1B8 /* CaptureModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModel.swift; sourceTree = "<group>"; };
@@ -287,6 +294,7 @@
 				418AF72A76602CA80C3DFB3C /* PlaceSuggester.swift */,
 				01DAB72FC293935DECB0CF1D /* PlaceTarget.swift */,
 				DF640CFCB3D65C8A682A0B1B /* PlanRecovery.swift */,
+				65FC61BF7FD4BD2C97C29A99 /* ProvisioningProfile.swift */,
 				6DA1A899AB35902CED36CD28 /* SurfacingPolicy.swift */,
 				1D0BCCEC166BF0B4EBD328C0 /* TextNormalizer.swift */,
 			);
@@ -433,6 +441,7 @@
 				098636769488A3CD18B11F53 /* PinLifecycleTests.swift */,
 				D526C6FE7EF84219D8202919 /* PlacesTests.swift */,
 				C9BC668FF7AB851BA666BB28 /* PlanRecoveryTests.swift */,
+				CA9F36DB9A8B075D3FE4D81C /* ProvisioningProfileTests.swift */,
 			);
 			path = PinscapeTests;
 			sourceTree = "<group>";
@@ -788,6 +797,7 @@
 				2A84EAE1D18C244B3BE2CF19 /* PlacesView.swift in Sources */,
 				13BFCC6EBE4B188BC132DC30 /* PlanRecovery.swift in Sources */,
 				42961492061DB3A7B20894FF /* ProStore.swift in Sources */,
+				8F65C4EEF574350831C50593 /* ProvisioningProfile.swift in Sources */,
 				19D682AC30E9BDAF29E65727 /* RegionStore.swift in Sources */,
 				7345381B79A061E4AF2D9D00 /* RootView.swift in Sources */,
 				4CB5A58BB95DD3B339169FBA /* SettingsView.swift in Sources */,
@@ -820,6 +830,8 @@
 				5E7B5E93FE41931CAE6B40EE /* PlacesTests.swift in Sources */,
 				AC074E4011E4C6210DE0F4B8 /* PlanRecovery.swift in Sources */,
 				E0CAA0F4E5686053C0980095 /* PlanRecoveryTests.swift in Sources */,
+				3C0CD0E69ED8C84BC1A1E4BD /* ProvisioningProfile.swift in Sources */,
+				317CB30B83F89B0088E5C381 /* ProvisioningProfileTests.swift in Sources */,
 				AB30B58EB3AB16F298F822C7 /* SurfacingPolicy.swift in Sources */,
 				129433E89304FA4DDAC78725 /* TextNormalizer.swift in Sources */,
 			);
@@ -859,6 +871,7 @@
 				40D6C3C119EE8F8273E1F66A /* PlaceSuggester.swift in Sources */,
 				FFBE5863E71E62FDA07F94C9 /* PlaceTarget.swift in Sources */,
 				18C4FF362CE8B65105D45992 /* PlanRecovery.swift in Sources */,
+				51BC5B350E2FF709B4A07B4D /* ProvisioningProfile.swift in Sources */,
 				2A4102D652B3E969CF46DC6C /* RegionStore.swift in Sources */,
 				CCEF12B06978B6C6CC17A4CB /* SharedIntents.swift in Sources */,
 				A652DAD6B3834C14B91FDA44 /* SurfacingPolicy.swift in Sources */,
@@ -885,6 +898,7 @@
 				A5132FA00E4210DD9A8C5503 /* PlaceSuggester.swift in Sources */,
 				0035295F034B0D404D39FC05 /* PlaceTarget.swift in Sources */,
 				B957E813257A86278EDBECC4 /* PlanRecovery.swift in Sources */,
+				C5E29BD0EECEC3E8A67D2D39 /* ProvisioningProfile.swift in Sources */,
 				B6F4B349CE8A8F401C9589C5 /* RegionStore.swift in Sources */,
 				B60C24A0CB0ED424C1B6EA16 /* ShareModel.swift in Sources */,
 				B56C53B002359CA121CF5E60 /* ShareView.swift in Sources */,

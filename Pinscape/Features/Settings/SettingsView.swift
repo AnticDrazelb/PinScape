@@ -97,6 +97,14 @@ struct SettingsView: View {
                     Text(permissionsFooter)
                 }
 
+                if !AppGroup.isShared && !PinStore.isDemo {
+                    Section {
+                        SettingLabel("Widgets & Share Sheet are off", detail: "Your pins are saved in the app as normal", symbol: "square.stack.3d.up.slash.fill", color: .gray)
+                    } footer: {
+                        Text("This copy of Pinscape was installed without an App Group, so the widgets and Share Sheet can't reach your pins. Installing with AltStore or SideStore, or from TestFlight, turns them on, and your pins move across.")
+                    }
+                }
+
                 Section {
                     PrivacyCard()
                 } header: {
@@ -433,6 +441,7 @@ struct DiagnosticsView: View {
         List {
             Section("Now") {
                 LabeledContent("Pin store", value: storeText)
+                LabeledContent("Widgets & Share Sheet", value: AppGroup.isShared ? "Shared" : "Off (no App Group)")
                 LabeledContent("Location", value: locationText)
                 LabeledContent("Notifications", value: notificationText)
                 LabeledContent("Places armed", value: "\(engine.regions.count) of 20")

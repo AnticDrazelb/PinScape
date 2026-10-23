@@ -13,7 +13,7 @@ struct ShareView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     if !PinStore.isWritable {
-                        Label("Pinscape can't open your pins right now, so this can't be saved. Open the app for details.", systemImage: "exclamationmark.triangle.fill")
+                        Label(AppGroup.isShared ? "Pinscape can't open your pins right now, so this can't be saved. Open the app for details." : "This copy of Pinscape was installed without an App Group, so the Share Sheet can't save pins. Add this in the app instead.", systemImage: "exclamationmark.triangle.fill")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.orange)
                     }

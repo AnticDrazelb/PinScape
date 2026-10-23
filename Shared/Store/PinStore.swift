@@ -65,15 +65,56 @@ enum PinStore {
             return (emptyContainer(), .demo)
         }
         do {
-            let url = try AppGroup.containerURL()
-                .appendingPathComponent("Pinscape", isDirectory: true)
-                .appendingPathComponent("Pinscape.store")
+            let url = storeURL(in: try AppGroup.containerURL())
+            if AppGroup.isExtension {
+                // Only the app creates the store, so a widget can't get there first with an empty
+                // one and strand pins the app is about to move in.
+                guard FileManager.default.fileExists(atPath: url.path) else { throw NotCreatedYet() }
+            } else if AppGroup.isShared {
+                // Pins kept while this app had no App Group (an earlier sideloaded install) move in.
+                try adoptPrivateStore(from: storeURL(in: AppGroup.privateContainerURL()), to: url)
+            }
             return (try openPersistentContainer(at: url), .ready)
         } catch {
             // Never quietly carry on with a throwaway store: the app shows what went wrong and
             // refuses to save, and the existing store file is left untouched for the next launch.
             Diagnostics.record(.storeUnavailable, error.localizedDescription)
             return (emptyContainer(), .unavailable(error.localizedDescription))
+        }
+    }
+
+    struct NotCreatedYet: LocalizedError {
+        var errorDescription: String? { "Open Pinscape once to set up your pins." }
+    }
+
+    static func storeURL(in container: URL) -> URL {
+        container.appendingPathComponent("Pinscape", isDirectory: true).appendingPathComponent("Pinscape.store")
+    }
+
+    /// Moves a store into place if there's one at `source` and none at `destination` yet. Copies
+    /// every file first and only then removes the originals, so a failure leaves the pins where
+    /// they were (and the store reports it) rather than half-moved.
+    static func adoptPrivateStore(from source: URL, to destination: URL) throws {
+        let files = FileManager.default
+        guard files.fileExists(atPath: source.path), !files.fileExists(atPath: destination.path) else { return }
+        try files.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: [
+            .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication,
+        ])
+        let pairs = ["", "-shm", "-wal"]
+            .map { (from: URL(fileURLWithPath: source.path + $0), to: URL(fileURLWithPath: destination.path + $0)) }
+            .filter { files.fileExists(atPath: $0.from.path) }
+        do {
+            for pair in pairs {
+                try files.copyItem(at: pair.from, to: pair.to)
+            }
+        } catch {
+            for pair in pairs {
+                try? files.removeItem(at: pair.to)
+            }
+            throw error
+        }
+        for pair in pairs {
+            try? files.removeItem(at: pair.from)
         }
     }
 

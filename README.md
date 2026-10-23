@@ -145,7 +145,7 @@ In Xcode, ⌘U runs the same tests on the simulator.
 `Pinscape.ipa` has no distribution signature (that needs an Apple Developer account), so install it with a tool that signs it with your own Apple ID:
 
 - **AltStore or SideStore** (recommended). They register the shared App Group for you and tell Pinscape its new identifier, so the widgets and Share Sheet see the same pins as the app.
-- **Sideloadly** also works. If Pinscape then says it can't open your pins, the tool didn't carry the App Group over; use AltStore or SideStore instead.
+- **Sideloadly** and signing services work too. Pinscape finds the App Group in whatever provisioning profile they embed. If they didn't grant one at all, the app keeps your pins in its own storage and works normally, but the widgets and Share Sheet stay off (Settings says so). Reinstalling with AltStore or SideStore turns them on and moves your pins across.
 
 With a free Apple ID the install lasts 7 days before it needs refreshing, and your account may not be allowed some capabilities (NFC stickers, Time Sensitive notifications). In-app purchases only work in builds from TestFlight or the App Store, so a sideloaded copy stays on the free tier.
 
