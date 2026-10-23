@@ -156,6 +156,16 @@ struct PinDetailView: View {
                         Annotation(marker.title, coordinate: marker.coordinate) {
                             PlaceGlyph(symbol: marker.symbol, colorHex: marker.colorHex, size: 26)
                         }
+                        if marker.id == markers.first?.id {
+                            // How big the trigger zone is, drawn on the map.
+                            MapPolyline(coordinates: [marker.coordinate, marker.edgeCoordinate])
+                                .stroke(Color(hex: marker.colorHex), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [3, 4]))
+                            Annotation("", coordinate: marker.radiusLabelCoordinate, anchor: .bottom) {
+                                RadiusLabel(text: PlaceTarget.formatDistance(marker.radius), colorHex: marker.colorHex)
+                                    .padding(.bottom, 4)
+                            }
+                            .annotationTitles(.hidden)
+                        }
                     }
                 }
                 .mapStyle(.standard(pointsOfInterest: .excludingAll))
@@ -164,9 +174,7 @@ struct PinDetailView: View {
             } header: {
                 Text(target.isDynamic ? "Nearest matches" : "Where")
             } footer: {
-                if target.isDynamic {
-                    Text("Pinscape watches the closest few and swaps in new ones as you move.")
-                }
+                Text(Self.mapFooter(isDynamic: target.isDynamic, radius: markers.first?.radius ?? target.radius))
             }
         }
     }
@@ -179,6 +187,15 @@ struct PinDetailView: View {
             .filter { target.matches(regionKey: $0.candidate.key) }
             .prefix(6)
             .map { PlaceMarker($0.candidate, id: $0.id) }
+    }
+
+    /// Says exactly when the pin fires, to head off "why didn't it go off?"
+    private static func mapFooter(isDynamic: Bool, radius: Double) -> String {
+        let distance = PlaceTarget.formatDistance(radius)
+        if isDynamic {
+            return "Reminds you within \(distance) of any of these. Pinscape watches the closest few and swaps in new ones as you move."
+        }
+        return "Reminds you once you're within \(distance), inside the circle. iOS can take a minute to notice you've arrived."
     }
 
     private static func timesText(_ count: Int) -> String {
@@ -195,5 +212,23 @@ struct PinDetailView: View {
         case .widget: "Widget"
         case .sticker: "NFC sticker"
         }
+    }
+}
+
+/// "150 m" on the map, over the dashed radius line.
+private struct RadiusLabel: View {
+    let text: String
+    let colorHex: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption2.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Color(hex: colorHex).opacity(0.7), lineWidth: 1))
+            .accessibilityLabel("Radius \(text)")
     }
 }

@@ -12,6 +12,11 @@ enum DemoContent {
         let context = PinStore.context
         guard PinActions.activePinCount(in: context) == 0 else { return }
 
+        if ProcessInfo.processInfo.arguments.contains("-PinscapeFirstPin") {
+            installFirstPin(in: context)
+            return
+        }
+
         let gym = SavedPlace(name: "Gym", symbol: "figure.strengthtraining.traditional", colorHex: "#FF375F", center: GeoPoint(latitude: 51.5299, longitude: -0.1197), radius: 150, address: "Pancras Square")
         let mum = SavedPlace(name: "Mum's house", symbol: "heart.fill", colorHex: "#FF6FA8", center: GeoPoint(latitude: 51.4613, longitude: -0.1156), radius: 150, address: "Brixton")
         let office = SavedPlace(name: "Office", symbol: "building.2.fill", colorHex: "#64748B", center: GeoPoint(latitude: 51.5345, longitude: -0.1250), radius: 200, address: "Granary Square")
@@ -76,6 +81,18 @@ enum DemoContent {
             VisitStore.begin(Visit(regionID: tesco.id, placeKey: tesco.candidate.key, title: tesco.candidate.title, subtitle: tesco.candidate.subtitle, symbol: tesco.candidate.symbol, colorHex: tesco.candidate.colorHex, arrivedAt: now.addingTimeInterval(-240), pinIDs: [batteries.id]))
         }
         AppModel.shared.refreshVisits()
+        openRequestedScreen()
+    }
+
+    /// Just after the very first capture: one pin, tutorial collapsed to its one-line hint.
+    private static func installFirstPin(in context: ModelContext) {
+        let pin = Pin(text: "Wood stain — the dark one", place: .brand(BrandCatalog.brand(named: "B&Q")!), capturedByVoice: true, source: .voice)
+        pin.createdAt = Date().addingTimeInterval(-90)
+        context.insert(pin)
+        try? context.save()
+        let bq = RegionCandidate(key: "brand:b&q", title: "B&Q", subtitle: "Holloway", center: GeoPoint(latitude: 51.5487, longitude: -0.1148), radius: 150, symbol: "hammer.fill", colorHex: "#FF9500")
+        let plan = GeofencePlanner.plan(candidates: [bq], around: kingsCross)
+        LocationEngine.shared.showDemo(location: CLLocation(latitude: kingsCross.latitude, longitude: kingsCross.longitude), regions: plan.regions)
         openRequestedScreen()
     }
 

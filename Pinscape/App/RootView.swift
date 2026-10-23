@@ -25,6 +25,8 @@ struct RootView: View {
                     StickerPinsView(stickerID: id)
                 case .map:
                     PinMapView()
+                case .captureHelp:
+                    CaptureHelpSheet()
                 }
             }
             .fullScreenCover(isPresented: $model.showOnboarding) {

@@ -41,7 +41,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             AppModel.shared.open(route: route)
         }
         if PinStore.isDemo {
-            Tips.showAllTipsForTesting()
             try? Tips.configure([.displayFrequency(.immediate)])
             DemoContent.install()
         } else {

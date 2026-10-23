@@ -225,6 +225,7 @@ final class CaptureModel {
         savedPin = pin
         stage = .saved
         CaptureFeedback.pinDropped()
+        ActionButtonTip.recordPinDropped()
         VoiceConfirmation.shared.say(SurfacingPolicy.confirmation(place: place.title, note: note))
         return true
     }

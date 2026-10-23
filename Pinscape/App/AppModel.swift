@@ -48,6 +48,7 @@ final class AppModel {
         case hereNow
         case sticker(UUID)
         case map
+        case captureHelp
 
         var id: String {
             switch self {
@@ -58,6 +59,7 @@ final class AppModel {
             case .hereNow: "here"
             case .sticker(let id): "sticker-\(id)"
             case .map: "map"
+            case .captureHelp: "capture-help"
             }
         }
     }

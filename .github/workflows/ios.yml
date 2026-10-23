@@ -105,6 +105,7 @@ jobs:
             shoot "$screen" "$screen"
           done
           shoot paywall paywall -PinscapeFree YES
+          shoot home-first-pin home -PinscapeFirstPin YES
           xcrun simctl ui "$UDID" appearance dark
           shoot home-dark home
           shoot pin-dark pin

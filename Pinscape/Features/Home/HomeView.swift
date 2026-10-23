@@ -31,7 +31,8 @@ struct HomeView: View {
     @State private var notificationsAllowed = true
     @State private var showCompleted = false
 
-    private let fuzzyTip = FuzzyPlacesTip()
+    @AppStorage("quickCaptureHintDismissed") private var quickHintDismissed = false
+
     private let actionTip = ActionButtonTip()
 
     var body: some View {
@@ -65,18 +66,24 @@ struct HomeView: View {
 
                 if pins.isEmpty {
                     Section {
+                        TipView(actionTip)
+                            .tipBackground(Color(uiColor: .secondarySystemGroupedBackground))
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+
+                    Section {
                         EmptyPinsView()
                     }
                     .listRowBackground(Color.clear)
-                } else {
+                } else if showsQuickCaptureHint {
                     Section {
-                        if pins.count > 2 {
-                            TipView(actionTip)
-                                .tipBackground(Color(uiColor: .secondarySystemGroupedBackground))
-                        } else {
-                            TipView(fuzzyTip)
-                                .tipBackground(Color(uiColor: .secondarySystemGroupedBackground))
+                        QuickCaptureHint {
+                            model.sheet = .captureHelp
+                        } dismiss: {
+                            withAnimation(.snappy) { quickHintDismissed = true }
                         }
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -217,6 +224,14 @@ struct HomeView: View {
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
+    }
+
+    /// After the first pin the tutorial card shrinks to this one-liner, and goes away once
+    /// you've used quick capture, dropped a handful of pins, or closed it.
+    private var showsQuickCaptureHint: Bool {
+        guard !quickHintDismissed else { return false }
+        let everything = pins + completed
+        return everything.count < 5 && !everything.contains { $0.source == .widget }
     }
 
     // MARK: Grouping
@@ -546,6 +561,49 @@ struct EmptyPinsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
+    }
+}
+
+/// The collapsed "Capture in two seconds" card.
+struct QuickCaptureHint: View {
+    var open: () -> Void
+    var dismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: open) {
+                HStack(spacing: 10) {
+                    Image(systemName: "button.horizontal.top.press.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                    Text("Capture faster with the Action Button")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+                    .background(Color.primary.opacity(0.06), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Hide tip")
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 10)
+        .padding(.vertical, 11)
+        .cardBackground(cornerRadius: 16)
     }
 }
 

@@ -27,6 +27,19 @@ struct PlaceMarker: Identifiable, Hashable {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
+extension PlaceMarker {
+    /// The point on the circle due east of its centre.
+    var edgeCoordinate: CLLocationCoordinate2D {
+        let metresPerDegree = 111_320 * cos(coordinate.latitude * .pi / 180)
+        return CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude + radius / max(metresPerDegree, 1))
+    }
+
+    /// Halfway along the radius, where its length is labelled.
+    var radiusLabelCoordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: (coordinate.longitude + edgeCoordinate.longitude) / 2)
+    }
+}
+
 /// The map at the top of Home: you, and the places your pins are waiting at.
 struct HomeMapCard: View {
     @Environment(LocationEngine.self) private var engine

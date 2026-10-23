@@ -43,6 +43,7 @@ struct QuickPinIntent: AppIntent {
 
         let text = CaptureParser.cleanNote(note)
         PinActions.add(text: text, place: target, isAmbient: false, capturedByVoice: true, source: .siri)
+        ActionButtonTip.recordPinDropped()
         return .result(dialog: "\(SurfacingPolicy.confirmation(place: target.title, note: text))")
     }
 }

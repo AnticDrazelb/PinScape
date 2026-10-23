@@ -325,6 +325,23 @@ struct PrivacyCard: View {
     }
 }
 
+/// The quick-capture steps on their own, opened from the hint on Home.
+struct CaptureHelpSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ShortcutsHelpView()
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
+                }
+        }
+    }
+}
+
 /// How to put Pinscape on the Action Button, Back Tap and the Lock Screen.
 struct ShortcutsHelpView: View {
     var body: some View {

@@ -88,7 +88,7 @@ You need a Mac with **Xcode 26** or later.
 
 To try purchases in the simulator, the Pinscape scheme already uses `Pinscape/Resources/Pinscape.storekit`.
 
-To see the app with sample data, add the launch arguments `-PinscapeDemo YES` and optionally `-PinscapeScreen capture` (or `places`, `settings`, `paywall`, `onboarding`, `pin`, `here`, `map`). Demo mode is Pro; add `-PinscapeFree YES` to see the free tier.
+To see the app with sample data, add the launch arguments `-PinscapeDemo YES` and optionally `-PinscapeScreen capture` (or `places`, `settings`, `paywall`, `onboarding`, `pin`, `here`, `map`). Demo mode is Pro; add `-PinscapeFree YES` to see the free tier, or `-PinscapeFirstPin YES` to see Home right after a first capture.
 
 > **Free Apple developer accounts:** App Groups, NFC and Time Sensitive notifications need a paid membership. With a free account, remove those capabilities from the three `.entitlements` files to run on your own phone; widgets and the share extension then keep their own separate data.
 
