@@ -49,7 +49,7 @@ enum DemoContent {
         add("Oat milk — the barista one", supermarkets.target(), voice: true, age: 10_000)
         add("Rice and lentils running low", pantry.target(), age: 5_000)
 
-        let seeded = PinActions.activePins(in: context)
+        let seeded = (try? PinActions.fetchActivePins(in: context)) ?? []
         if let callDad = seeded.first(where: { $0.text == "Call Dad" }) {
             callDad.lastSurfacedAt = now.addingTimeInterval(-86_400)
             callDad.surfaceCount = 6
