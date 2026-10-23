@@ -82,7 +82,11 @@ jobs:
 
       - name: Summarise failures
         if: failure()
-        run: grep -hE "error:|failed" build.log test.log 2>/dev/null | sort -u | head -150 || true
+        run: |
+          grep -hE "error:|failed" build.log test.log 2>/dev/null | sort -u | head -150 || true
+          if [ -d TestResults.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path TestResults.xcresult | python3 scripts/test_failures.py
+          fi
 
       - uses: actions/upload-artifact@v4
         if: failure()

@@ -15,7 +15,7 @@ final class CaptureModelTests: XCTestCase {
         let model = CaptureModel(request: CaptureRequest(text: "Tesco, milk", listen: false))
         XCTAssertEqual(model.place?.name, "Tesco")
 
-        model.text = "milk at Hobbycraft Camden"
+        model.text = "milk at Camden Market"
         XCTAssertNil(model.place, "the previous place must not stay selected")
         XCTAssertTrue(model.isResolving)
         XCTAssertFalse(model.canSave)
@@ -37,7 +37,7 @@ final class CaptureModelTests: XCTestCase {
     }
 
     func testChoosingAPlaceWinsOverALookupInFlight() {
-        let model = CaptureModel(request: CaptureRequest(text: "milk at Hobbycraft Camden", listen: false))
+        let model = CaptureModel(request: CaptureRequest(text: "milk at Camden Market", listen: false))
         XCTAssertTrue(model.isResolving)
         model.choose(.category(.supermarket))
         XCTAssertFalse(model.isResolving)
