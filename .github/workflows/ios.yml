@@ -110,6 +110,18 @@ jobs:
           shoot pin-dark pin
           ls -la shots
 
+      - name: Package simulator build
+        if: success()
+        run: |
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "Pinscape.app" | head -1)
+          ditto -c -k --keepParent "$APP" Pinscape-simulator.zip
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Pinscape-simulator
+          path: Pinscape-simulator.zip
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -27,7 +27,17 @@ It uses the native frameworks Apple already built: **App Intents, ActivityKit (L
 
 ## Screenshots
 
-Every push to `main` builds the app on GitHub's macOS runner, launches it in the iOS 26 simulator with sample data, and publishes screenshots to the [`ci/screenshots`](../../tree/ci/screenshots) branch.
+Captured automatically on GitHub's macOS runner from the iOS 26 simulator (iPhone 17 Pro).
+
+| Home | Capture | Pin |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/home.jpg" width="250"> | <img src="docs/screenshots/capture.jpg" width="250"> | <img src="docs/screenshots/pin.jpg" width="250"> |
+| **Watched places** | **Your places** | **Pro** |
+| <img src="docs/screenshots/map.jpg" width="250"> | <img src="docs/screenshots/places.jpg" width="250"> | <img src="docs/screenshots/paywall.jpg" width="250"> |
+| **Welcome** | **Say it** | **Dark mode** |
+| <img src="docs/screenshots/onboarding.jpg" width="250"> | <img src="docs/screenshots/capture-empty.jpg" width="250"> | <img src="docs/screenshots/home-dark.jpg" width="250"> |
+
+Every push to `main` re-captures these from a fresh build and publishes them to the [`ci/screenshots`](../../tree/ci/screenshots) branch.
 
 ## How it works
 
@@ -78,7 +88,7 @@ You need a Mac with **Xcode 26** or later.
 
 To try purchases in the simulator, the Pinscape scheme already uses `Pinscape/Resources/Pinscape.storekit`.
 
-To see the app with sample data, add the launch arguments `-PinscapeDemo YES` and optionally `-PinscapeScreen capture` (or `places`, `settings`, `paywall`, `onboarding`, `pin`, `here`, `map`).
+To see the app with sample data, add the launch arguments `-PinscapeDemo YES` and optionally `-PinscapeScreen capture` (or `places`, `settings`, `paywall`, `onboarding`, `pin`, `here`, `map`). Demo mode is Pro; add `-PinscapeFree YES` to see the free tier.
 
 > **Free Apple developer accounts:** App Groups, NFC and Time Sensitive notifications need a paid membership. With a free account, remove those capabilities from the three `.entitlements` files to run on your own phone; widgets and the share extension then keep their own separate data.
 
@@ -110,7 +120,7 @@ In Xcode, ⌘U runs the same tests on the simulator.
 `.github/workflows/ios.yml` runs on every push:
 
 - **Core tests** on Linux (`swift test`).
-- **Build, test & screenshots** on GitHub's `macos-26` runner with Xcode 26: builds the app and both extensions, runs the unit tests on an iPhone 17 Pro simulator, then launches the app in demo mode and captures screenshots of each screen in light and dark mode.
+- **Build, test & screenshots** on GitHub's `macos-26` runner with Xcode 26: builds the app and both extensions, runs the unit tests on an iPhone 17 Pro simulator, then launches the app in demo mode and captures screenshots of each screen in light and dark mode. The simulator build is attached to each run as `Pinscape-simulator` (drag it onto a booted simulator to install).
 
 ### TestFlight from GitHub
 `.github/workflows/testflight.yml` archives, signs and uploads to TestFlight from the macOS runner, so you never need your own Mac to get Pinscape on your phone.
