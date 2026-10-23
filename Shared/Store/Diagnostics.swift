@@ -6,6 +6,7 @@ import os
 enum Diagnostics {
     enum Event: String, Codable {
         case storeUnavailable
+        case storeReopened
         case saveFailed
         case monitorStopped
         case monitorRestarted
@@ -13,6 +14,7 @@ enum Diagnostics {
         case planApplied
         case planIncomplete
         case arrival
+        case arrivalDeferred
         case notificationFailed
         case notificationsOff
         case liveActivityFailed
@@ -20,6 +22,7 @@ enum Diagnostics {
         var title: String {
             switch self {
             case .storeUnavailable: "Couldn't open pins"
+            case .storeReopened: "Pins opened after a delay"
             case .saveFailed: "Couldn't save"
             case .monitorStopped: "Location monitoring stopped"
             case .monitorRestarted: "Location monitoring restarted"
@@ -27,6 +30,7 @@ enum Diagnostics {
             case .planApplied: "Places armed"
             case .planIncomplete: "Some places couldn't be armed"
             case .arrival: "Arrived at a pinned place"
+            case .arrivalDeferred: "Arrival not recorded yet"
             case .notificationFailed: "Notification failed"
             case .notificationsOff: "Arrived, but notifications are off"
             case .liveActivityFailed: "Live Activity didn't start"
@@ -35,7 +39,7 @@ enum Diagnostics {
 
         var isProblem: Bool {
             switch self {
-            case .planApplied, .arrival, .monitorRestarted: false
+            case .planApplied, .arrival, .monitorRestarted, .storeReopened: false
             default: true
             }
         }
@@ -46,6 +50,8 @@ enum Diagnostics {
         var date: Date
         var event: Event
         var detail: String
+        /// How many times in a row this happened; retries of the same failure collapse into one entry.
+        var times: Int?
     }
 
     private static let key = "diagnostics"
@@ -60,7 +66,13 @@ enum Diagnostics {
             logger.info("\(event.rawValue, privacy: .public): \(detail, privacy: .private)")
         }
         var entries = recent()
-        entries.insert(Entry(date: Date(), event: event, detail: detail), at: 0)
+        // A failure that keeps retrying (often alternating with another) is one entry with a count.
+        var entry = Entry(date: Date(), event: event, detail: detail)
+        if let index = entries.prefix(4).firstIndex(where: { $0.event == event && $0.detail == detail }) {
+            entry.times = (entries[index].times ?? 1) + 1
+            entries.remove(at: index)
+        }
+        entries.insert(entry, at: 0)
         if entries.count > limit { entries.removeLast(entries.count - limit) }
         AppGroup.defaults.set(try? JSONEncoder().encode(entries), forKey: key)
     }

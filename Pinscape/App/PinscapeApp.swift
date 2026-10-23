@@ -26,6 +26,7 @@ struct PinscapeApp: App {
                 LocationEngine.shared.scheduleReplan()
             }
             Task {
+                await ArrivalCoordinator.retryPending()
                 await ProStore.shared.refreshEntitlements()
                 await LiveActivityController.resumeForCurrentVisits()
                 await CalendarScout.shared.refresh()
@@ -44,6 +45,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         PinscapeHooks.writeFailed = { message in
             AppModel.shared.storeAlert = message
         }
+        PinscapeHooks.storeReopened = {
+            AppModel.shared.storeDidReopen()
+        }
         if PinStore.isDemo {
             try? Tips.configure([.displayFrequency(.immediate)])
             DemoContent.install()
@@ -55,6 +59,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         LocationEngine.shared.start()
         ProStore.shared.start()
         return true
+    }
+
+    /// The first unlock after a restart. If iOS launched Pinscape in the background before that
+    /// (for an arrival, say), the store couldn't be opened then; open it now and catch up.
+    func applicationProtectedDataDidBecomeAvailable(_ application: UIApplication) {
+        AppModel.shared.reopenStoreIfNeeded()
+        Task { await ArrivalCoordinator.retryPending() }
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {

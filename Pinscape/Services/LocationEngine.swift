@@ -148,11 +148,16 @@ final class LocationEngine: NSObject {
         }
     }
 
+    /// How long to wait before trying again after a plan that couldn't be completed.
+    private static let retryDelay: Duration = .seconds(5 * 60)
+
     /// Works out which places to watch and hands them to Core Location.
+    ///
+    /// Never trades working regions for a guess: if the pins can't be read nothing changes, and a
+    /// failed search or missing location fix keeps what was already watched (see
+    /// `GeofencePlanner.replan`) and tries again later.
     func replan() async {
         guard !PinStore.isDemo else { return }
-        // Without readable pins an empty plan would disarm everything. Keep what's armed.
-        guard PinStore.isWritable else { return }
         if monitor == nil {
             await startMonitor()
         }
@@ -164,62 +169,75 @@ final class LocationEngine: NSObject {
         }
         isPlanning = true
         let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Pinscape planning", expirationHandler: nil)
+        var retry: Duration? = nil
         defer {
             isPlanning = false
             UIApplication.shared.endBackgroundTask(backgroundTask)
             if replanAgain {
                 replanAgain = false
                 scheduleReplan()
+            } else if let retry {
+                scheduleReplan(after: retry)
             }
         }
 
         lastPlanAttempt = Date()
+        let pins: [Pin]
+        let places: [SavedPlace]
+        do {
+            guard PinStore.openIfNeeded() else { throw PersistenceError.storeUnavailable }
+            pins = try PinActions.fetchActivePins()
+            places = try PinActions.fetchSavedPlaces()
+        } catch {
+            // Not the same as "no pins": an empty plan would disarm everything.
+            AppGroup.defaults.set(true, forKey: SharedKeys.needsReplan)
+            let reason = error is PersistenceError ? "The pin store isn't open yet" : "Couldn't read pins (\(error.localizedDescription))"
+            Diagnostics.record(.planIncomplete, "\(reason), so the places already watched stay as they are")
+            retry = Self.retryDelay
+            return
+        }
+
         var here = location
         if hasAccess {
             here = await currentLocation(maxAge: 300)
         }
         // Pins that already reminded you don't take up any of iOS's 20 watched places.
-        let snapshots = PinActions.snapshots(of: PinActions.activePins(), places: PinActions.savedPlaces())
-        let inputs = GeofencePlanner.inputs(for: snapshots)
-
-        var candidates = inputs.fixed
-        var complete = true
+        let inputs = GeofencePlanner.inputs(for: PinActions.snapshots(of: pins, places: places))
+        var lookups: [String: BranchLookup] = [:]
         if let here {
             for spec in inputs.searches {
-                let lookup = await PlaceSearch.shared.branches(for: spec, near: here)
-                candidates += lookup.results
-                complete = complete && lookup.isFresh
+                lookups[spec.key] = await PlaceSearch.shared.branches(for: spec, near: here)
             }
-        } else if !inputs.searches.isEmpty {
-            complete = false
         }
+        let result = GeofencePlanner.replan(inputs: inputs, lookups: lookups, previous: RegionStore.load(), around: here.map { GeoPoint($0.coordinate) })
+        await apply(result.plan, to: monitor, redrawBoundary: here != nil)
 
-        let userPoint = here.map { GeoPoint($0.coordinate) }
-        let plan = GeofencePlanner.plan(candidates: candidates, around: userPoint, refreshDistance: inputs.searches.isEmpty ? nil : 3_000)
-        await apply(plan, to: monitor)
-
-        regions = plan.regions
-        RegionStore.save(plan.all)
-        lastPlannedLocation = here
-        // A failed search means some branches may be missing or old: try again later rather than
-        // treating the plan as finished.
-        AppGroup.defaults.set(!complete, forKey: SharedKeys.needsReplan)
-        if complete {
-            Diagnostics.record(.planApplied, "\(plan.regions.count) regions")
+        regions = result.plan.regions
+        RegionStore.save(result.plan.all)
+        if let here {
+            lastPlannedLocation = here
+        }
+        AppGroup.defaults.set(!result.isComplete, forKey: SharedKeys.needsReplan)
+        if result.isComplete {
+            Diagnostics.record(.planApplied, "\(result.plan.regions.count) regions")
         } else {
-            Diagnostics.record(.planIncomplete, here == nil ? "No location fix" : "Some Apple Maps searches failed; using what's known")
+            retry = Self.retryDelay
+            Diagnostics.record(.planIncomplete, here == nil ? "No location fix, so the places already watched stay as they are" : "Some Apple Maps searches failed, so their places already watched stay as they are")
         }
     }
 
-    private func apply(_ plan: GeofencePlan, to monitor: CLMonitor) async {
+    /// Removes the regions a plan no longer wants and adds the new ones. The boundary is redrawn
+    /// only when there's a location to centre it on; otherwise the one already watched stays.
+    private func apply(_ plan: GeofencePlan, to monitor: CLMonitor, redrawBoundary: Bool) async {
         let wanted = plan.all
         let wantedIDs = Set(wanted.map(\.id))
         let existing = Set(await monitor.identifiers)
+        let redraw = { (id: String) in redrawBoundary && id == GeofencePlanner.boundaryID }
 
-        for id in existing where !wantedIDs.contains(id) || id == GeofencePlanner.boundaryID {
+        for id in existing where !wantedIDs.contains(id) || redraw(id) {
             await monitor.remove(id)
         }
-        for region in wanted where !existing.contains(region.id) || region.id == GeofencePlanner.boundaryID {
+        for region in wanted where !existing.contains(region.id) || redraw(region.id) {
             let condition = CLMonitor.CircularGeographicCondition(center: region.candidate.center.coordinate, radius: region.candidate.radius)
             await monitor.add(condition, identifier: region.id, assuming: region.startsInside ? .satisfied : .unsatisfied)
         }
@@ -271,15 +289,18 @@ final class LocationEngine: NSObject {
             }
             return
         }
-        guard let region = regions.first(where: { $0.id == identifier }) ?? RegionStore.load().first(where: { $0.id == identifier }) else {
-            return
-        }
+        let region = regions.first(where: { $0.id == identifier }) ?? RegionStore.load().first(where: { $0.id == identifier })
         let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Pinscape arrival", expirationHandler: nil)
         switch state {
         case .satisfied:
-            await ArrivalCoordinator.arrived(at: region)
+            if let region {
+                await ArrivalCoordinator.arrived(at: region)
+            } else if !PinStore.openIfNeeded() {
+                // Woken before first unlock: the plan and pins are still unreadable. Catch up later.
+                ArrivalCoordinator.arrived(atUnreadableRegion: identifier)
+            }
         case .unsatisfied:
-            await ArrivalCoordinator.left(region)
+            await ArrivalCoordinator.left(regionID: identifier)
         default:
             break
         }

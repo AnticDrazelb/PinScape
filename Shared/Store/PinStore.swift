@@ -21,20 +21,24 @@ enum PinStore {
 
     static let schema = Schema([Pin.self, SavedPlace.self])
 
-    /// Replaced only by `reopenIfUnavailable()`, on the main actor in the app process.
+    /// Replaced only by `openIfNeeded()`, on the main actor.
     private static var setup: (container: ModelContainer, health: StoreHealth) = makeContainer()
 
     static var container: ModelContainer { setup.container }
     static var health: StoreHealth { setup.health }
 
-    /// Tries again after a failed open, e.g. when iOS woke Pinscape for an arrival before the phone's
-    /// first unlock after a restart, while protected files were still unreadable. Returns true if the
-    /// store just became available.
+    /// Makes sure the store is open, trying again after a failed open: iOS may have woken Pinscape
+    /// for an arrival before the phone's first unlock after a restart, while protected files were
+    /// still unreadable. Returns whether pins can be read and written. When a retry succeeds the
+    /// app is told, so it can refresh its screens, re-plan and catch up on missed arrivals.
     @MainActor
-    static func reopenIfUnavailable() -> Bool {
-        guard case .unavailable = setup.health else { return false }
+    @discardableResult
+    static func openIfNeeded() -> Bool {
+        guard case .unavailable = setup.health else { return true }
         setup = makeContainer()
-        return isWritable
+        guard isWritable else { return false }
+        PinscapeHooks.storeReopened?()
+        return true
     }
 
     /// False when the store failed to open. Every write checks this, so a thought is never
@@ -106,21 +110,31 @@ enum PinscapeHooks {
     static var openRoute: (@MainActor (String) -> Void)?
     /// A change couldn't be saved; the app tells you rather than pretending it worked.
     static var writeFailed: (@MainActor (String) -> Void)?
+    /// The store opened after failing to; anything waiting on it can carry on.
+    static var storeReopened: (@MainActor () -> Void)?
 }
 
 /// Reads and writes pins from any process.
 @MainActor
 enum PinActions {
+    /// Active pins for display. A store that can't be read shows as empty; anything that acts on
+    /// the answer (planning, arrivals) uses `fetchActivePins()`, which throws instead.
     static func activePins() -> [Pin] {
-        activePins(in: PinStore.context)
+        (try? fetchActivePins(in: PinStore.context)) ?? []
     }
 
-    static func activePins(in context: ModelContext) -> [Pin] {
+    /// Active pins, or an error if they can't be read, so a failure is never mistaken for "no pins".
+    static func fetchActivePins() throws -> [Pin] {
+        guard PinStore.isWritable else { throw PersistenceError.storeUnavailable }
+        return try fetchActivePins(in: PinStore.context)
+    }
+
+    static func fetchActivePins(in context: ModelContext) throws -> [Pin] {
         let descriptor = FetchDescriptor<Pin>(
             predicate: #Predicate<Pin> { $0.completedAt == nil },
             sortBy: [SortDescriptor(\Pin.createdAt, order: .reverse)]
         )
-        return (try? context.fetch(descriptor)) ?? []
+        return try context.fetch(descriptor)
     }
 
     static func activePinCount() -> Int {
@@ -142,13 +156,19 @@ enum PinActions {
         return try? context.fetch(descriptor).first
     }
 
+    /// Saved places for display; see `activePins()`.
     static func savedPlaces() -> [SavedPlace] {
-        savedPlaces(in: PinStore.context)
+        (try? fetchSavedPlaces(in: PinStore.context)) ?? []
     }
 
-    static func savedPlaces(in context: ModelContext) -> [SavedPlace] {
+    static func fetchSavedPlaces() throws -> [SavedPlace] {
+        guard PinStore.isWritable else { throw PersistenceError.storeUnavailable }
+        return try fetchSavedPlaces(in: PinStore.context)
+    }
+
+    static func fetchSavedPlaces(in context: ModelContext) throws -> [SavedPlace] {
         let descriptor = FetchDescriptor<SavedPlace>(sortBy: [SortDescriptor(\SavedPlace.createdAt)])
-        return (try? context.fetch(descriptor)) ?? []
+        return try context.fetch(descriptor)
     }
 
     /// Whether the free tier allows one more active pin.

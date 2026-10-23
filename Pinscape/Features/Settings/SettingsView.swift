@@ -449,6 +449,11 @@ struct DiagnosticsView: View {
                                 .foregroundStyle(entry.event.isProblem ? .orange : .green)
                             Text(entry.event.title)
                                 .font(.subheadline.weight(.medium))
+                            if let times = entry.times, times > 1 {
+                                Text("×\(times)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
                             Spacer()
                             Text(entry.date, format: .relative(presentation: .named))
                                 .font(.caption)
@@ -510,7 +515,8 @@ struct DiagnosticsView: View {
         var lines = ["Pinscape diagnostics", "Store: \(storeText)", "Location: \(locationText)", "Notifications: \(notificationText)", "Places armed: \(engine.regions.count)", ""]
         let formatter = ISO8601DateFormatter()
         for entry in entries {
-            lines.append("\(formatter.string(from: entry.date))  \(entry.event.rawValue)  \(entry.detail)")
+            let times = (entry.times ?? 1) > 1 ? "  ×\(entry.times ?? 1)" : ""
+            lines.append("\(formatter.string(from: entry.date))  \(entry.event.rawValue)\(times)  \(entry.detail)")
         }
         return lines.joined(separator: "\n")
     }

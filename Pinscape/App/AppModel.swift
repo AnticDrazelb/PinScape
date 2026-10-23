@@ -157,13 +157,23 @@ final class AppModel {
         open(route: route)
     }
 
-    /// Retries a store that failed to open. Called when the app comes forward and from the problem screen.
+    /// Retries a store that failed to open: when the app comes forward, at the first unlock after a
+    /// restart, and from the problem screen. Success arrives through `storeDidReopen()`.
     func reopenStoreIfNeeded() {
-        if PinStore.reopenIfUnavailable() {
-            storeGeneration += 1
+        PinStore.openIfNeeded()
+        storeHealth = PinStore.health
+    }
+
+    /// The store opened after failing to, wherever that was noticed: here, a background re-plan or
+    /// an arrival. Refresh the screens, put the watched places right and catch up on arrivals.
+    func storeDidReopen() {
+        Diagnostics.record(.storeReopened)
+        storeGeneration += 1
+        storeHealth = PinStore.health
+        if !LocationEngine.shared.isPlanning {
             LocationEngine.shared.scheduleReplan()
         }
-        storeHealth = PinStore.health
+        Task { await ArrivalCoordinator.retryPending() }
     }
 
     func refreshVisits() {

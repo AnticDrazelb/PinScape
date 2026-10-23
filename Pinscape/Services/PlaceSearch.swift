@@ -22,13 +22,6 @@ final class PlaceSearch {
         }
     }
 
-    /// Branches found for one search.
-    struct BranchLookup {
-        var results: [RegionCandidate]
-        /// False when Apple Maps couldn't be reached and older results (or none) were used instead.
-        var isFresh: Bool
-    }
-
     /// Older results are only worth reusing if they're from around here and not too old.
     private static let staleReuseDistance: Double = 5_000
     private static let staleReuseAge: TimeInterval = 3 * 24 * 60 * 60

@@ -11,12 +11,14 @@ enum AppGroup {
         }
     }
 
-    /// The shared container directory.
+    /// The shared container directory, after checking the shared preferences too.
     ///
     /// A signed build without the App Group entitlement would otherwise give the app, widgets and
     /// share extension separate stores without anyone noticing, so in Release a missing container
-    /// is an error. Debug builds (unsigned CI, previews) fall back to the app's own sandbox.
+    /// is an error: the store reports it and nothing is saved. Debug builds (unsigned CI, previews)
+    /// fall back to the app's own sandbox.
     static func containerURL() throws -> URL {
+        guard sharedDefaults != nil else { throw MissingContainer(identifier: identifier) }
         if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier) {
             return url
         }
@@ -29,7 +31,14 @@ enum AppGroup {
         #endif
     }
 
-    static let defaults: UserDefaults = UserDefaults(suiteName: identifier) ?? .standard
+    /// Preferences shared by every Pinscape process.
+    ///
+    /// `UserDefaults(suiteName:)` only fails for a reserved name; a build missing the entitlement
+    /// gets a private suite instead. Both are caught by `containerURL()`, which makes the store
+    /// report the problem rather than letting the app and extensions quietly drift apart. The
+    /// fallback only keeps a misconfigured build running long enough to say so.
+    static let defaults: UserDefaults = sharedDefaults ?? .standard
+    private static let sharedDefaults = UserDefaults(suiteName: identifier)
 }
 
 enum SharedKeys {

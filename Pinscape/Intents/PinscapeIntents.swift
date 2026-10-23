@@ -86,6 +86,9 @@ struct PinsHereIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard PinStore.openIfNeeded() else {
+            return .result(dialog: "Pinscape can't open your pins right now. Try again after unlocking your iPhone.")
+        }
         let visits = VisitStore.current()
         let ids = Set(visits.flatMap(\.pinIDs))
         let pins = PinActions.activePins().filter { ids.contains($0.id) }
