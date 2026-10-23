@@ -23,27 +23,26 @@ final class StoreKitTests: XCTestCase {
         await ProStore.shared.refreshEntitlements()
     }
 
-    /// Loads a product from the test session. iOS 26.4 and 26.5 simulators serve no products to
-    /// `SKTestSession` (an Apple bug), so there the purchase tests skip; CI runs them on iOS 26.2.
-    private func product(_ id: String) async throws -> Product {
-        if let product = try await Product.products(for: [id]).first {
-            return product
-        }
+    /// iOS 26.4 and 26.5 simulators serve nothing to `SKTestSession` (an Apple bug); there these
+    /// tests skip. CI runs them on iOS 26.2 and fails if any skip.
+    private func skipOnBrokenRuntime() throws {
         #if targetEnvironment(simulator)
         let os = ProcessInfo.processInfo.operatingSystemVersion
         if os.majorVersion == 26, (4...5).contains(os.minorVersion) {
-            throw XCTSkip("StoreKit testing serves no products on the iOS 26.\(os.minorVersion) simulator")
+            throw XCTSkip("StoreKit testing doesn't work on the iOS 26.\(os.minorVersion) simulator")
         }
         #endif
-        XCTFail("The StoreKit configuration has no product \(id)")
-        throw CancellationError()
     }
 
+    /// Buys through the test session. `Product.purchase()` waits for a confirmation sheet that a
+    /// headless test can't show; the app's paywall uses SwiftUI's `purchase` action instead.
     private func buy(_ id: String) async throws -> Transaction {
-        let result = try await product(id).purchase()
-        guard case .success(.verified(let transaction)) = result else {
-            XCTFail("Purchase of \(id) didn't succeed: \(result)")
-            throw CancellationError()
+        let transaction: Transaction
+        do {
+            transaction = try await session.buyProduct(identifier: id)
+        } catch {
+            try skipOnBrokenRuntime()
+            throw error
         }
         await transaction.finish()
         await ProStore.shared.refreshEntitlements()
@@ -86,12 +85,24 @@ final class StoreKitTests: XCTestCase {
         XCTAssertTrue(PinscapePlan.isPro)
     }
 
-    func testAskToBuyStaysFreeUntilApproved() async throws {
-        session.askToBuyEnabled = true
-        let result = try await product(Entitlements.monthlyID).purchase()
-        let bought = await ProStore.shared.handle(result)
-        XCTAssertFalse(bought)
+    func testPendingOrCancelledPurchasesStayFree() async {
+        // Ask to Buy returns .pending until a parent approves; closing the sheet returns .userCancelled.
+        let pending = await ProStore.shared.handle(.pending)
+        let cancelled = await ProStore.shared.handle(.userCancelled)
+        XCTAssertFalse(pending)
+        XCTAssertFalse(cancelled)
         XCTAssertFalse(ProStore.shared.isPro)
+    }
+
+    func testCatalogMatchesThePaywall() async throws {
+        let ids = [Entitlements.monthlyID, Entitlements.yearlyID, Entitlements.stickerPackID]
+        let products = try await Product.products(for: ids)
+        if products.isEmpty { try skipOnBrokenRuntime() }
+        let prices = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0.displayPrice) })
+        // The paywall shows these if the App Store can't be reached, so they must agree.
+        XCTAssertEqual(prices[Entitlements.monthlyID], "£2.99")
+        XCTAssertEqual(prices[Entitlements.yearlyID], "£24.99")
+        XCTAssertEqual(prices[Entitlements.stickerPackID], "£9.99")
     }
 
     func testStickerPackIsSeparateFromPro() async throws {

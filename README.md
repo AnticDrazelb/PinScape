@@ -137,7 +137,7 @@ In Xcode, ⌘U runs the same tests on the simulator.
 
 - **Core tests** on Linux (`swift test`).
 - **Release archive**: an unsigned device archive of the app and both extensions, checked for their resources.
-- **Build, test & screenshots** on GitHub's `macos-26` runner with Xcode 26: builds the app and both extensions, runs the unit tests on an iPhone 17 Pro simulator (the StoreKit purchase tests on iOS 26.2, because `SKTestSession` serves no products on the 26.4 and 26.5 simulators), then launches the app in demo mode and captures screenshots of each screen in light and dark mode. The simulator build is attached to each run as `Pinscape-simulator` (drag it onto a booted simulator to install).
+- **Build, test & screenshots** on GitHub's `macos-26` runner with Xcode 26: builds the app and both extensions, runs the unit tests on an iPhone 17 Pro simulator (the StoreKit tests on iOS 26.2, because StoreKit testing is broken on the 26.4 and 26.5 simulators), then launches the app in demo mode and captures screenshots of each screen in light and dark mode. The simulator build is attached to each run as `Pinscape-simulator` (drag it onto a booted simulator to install).
 
 ### TestFlight from GitHub
 `.github/workflows/testflight.yml` archives, signs and uploads to TestFlight from the macOS runner, so you never need your own Mac to get Pinscape on your phone.
