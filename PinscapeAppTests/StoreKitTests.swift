@@ -15,12 +15,12 @@ final class StoreKitTests: XCTestCase {
         session.disableDialogs = true
         session.resetToDefaultState()
         session.clearTransactions()
-        await ProStore.shared.refreshEntitlements()
+        await settle { !$0.isPro && !$0.hasStickerPack }
     }
 
     override func tearDown() async throws {
         session.clearTransactions()
-        await ProStore.shared.refreshEntitlements()
+        await settle { !$0.isPro && !$0.hasStickerPack }
     }
 
     /// iOS 26.4 and 26.5 simulators serve nothing to `SKTestSession` (an Apple bug); there these
@@ -34,6 +34,17 @@ final class StoreKitTests: XCTestCase {
         #endif
     }
 
+    /// The test session applies purchases, expiries, refunds and resets asynchronously, so wait
+    /// (briefly) for the entitlements to catch up before asserting on them.
+    private func settle(within timeout: Duration = .seconds(10), until condition: (ProStore) -> Bool) async {
+        let deadline = ContinuousClock.now + timeout
+        await ProStore.shared.refreshEntitlements()
+        while !condition(ProStore.shared), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(250))
+            await ProStore.shared.refreshEntitlements()
+        }
+    }
+
     /// Buys through the test session. `Product.purchase()` waits for a confirmation sheet that a
     /// headless test can't show; the app's paywall uses SwiftUI's `purchase` action instead.
     private func buy(_ id: String) async throws -> Transaction {
@@ -45,7 +56,6 @@ final class StoreKitTests: XCTestCase {
             throw error
         }
         await transaction.finish()
-        await ProStore.shared.refreshEntitlements()
         return transaction
     }
 
@@ -56,6 +66,7 @@ final class StoreKitTests: XCTestCase {
 
     func testMonthlyUnlocksPro() async throws {
         _ = try await buy(Entitlements.monthlyID)
+        await settle { $0.isPro }
         XCTAssertTrue(ProStore.shared.isPro)
         XCTAssertTrue(PinscapePlan.isPro, "extensions read the shared cache")
         XCTAssertNotNil(AppGroup.defaults.object(forKey: SharedKeys.proExpiresAt), "the cache records when Pro lapses")
@@ -63,17 +74,20 @@ final class StoreKitTests: XCTestCase {
 
     func testExpiredSubscriptionLosesPro() async throws {
         _ = try await buy(Entitlements.yearlyID)
+        await settle { $0.isPro }
         XCTAssertTrue(ProStore.shared.isPro)
         try session.expireSubscription(productIdentifier: Entitlements.yearlyID)
-        await ProStore.shared.refreshEntitlements()
+        await settle { !$0.isPro }
         XCTAssertFalse(ProStore.shared.isPro)
         XCTAssertFalse(PinscapePlan.isPro)
     }
 
     func testRefundRevokesPro() async throws {
         let transaction = try await buy(Entitlements.monthlyID)
+        await settle { $0.isPro }
+        XCTAssertTrue(ProStore.shared.isPro)
         try session.refundTransaction(identifier: UInt(transaction.id))
-        await ProStore.shared.refreshEntitlements()
+        await settle { !$0.isPro }
         XCTAssertFalse(ProStore.shared.isPro)
     }
 
@@ -107,6 +121,7 @@ final class StoreKitTests: XCTestCase {
 
     func testStickerPackIsSeparateFromPro() async throws {
         _ = try await buy(Entitlements.stickerPackID)
+        await settle { $0.hasStickerPack }
         XCTAssertTrue(ProStore.shared.hasStickerPack)
         XCTAssertTrue(ProStore.shared.hasStickers)
         XCTAssertFalse(ProStore.shared.isPro)
