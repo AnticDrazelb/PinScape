@@ -7,12 +7,12 @@ enum ArrivalCoordinator {
     static func arrived(at region: PlannedRegion) async {
         let now = Date()
         let places = PinActions.savedPlaces()
-        let cooldown = PinscapeSettings.cooldownHours * 60 * 60
+        let rest = PinscapeSettings.everyVisitRestHours * 60 * 60
         let matching = PinActions.activePins().filter {
             PinActions.resolvedTarget(for: $0, places: places).matches(regionKey: region.candidate.key)
         }
         let due = matching.filter {
-            SurfacingPolicy.shouldSurface(isAmbient: $0.isAmbient, isCompleted: $0.isCompleted, createdAt: $0.createdAt, lastSurfacedAt: $0.lastSurfacedAt, snoozedUntil: $0.snoozedUntil, now: now, cooldown: $0.isAmbient ? max(cooldown, SurfacingPolicy.ambientCooldown) : cooldown)
+            SurfacingPolicy.shouldSurface(isAmbient: $0.isAmbient, isCompleted: $0.isCompleted, createdAt: $0.createdAt, lastSurfacedAt: $0.lastSurfacedAt, snoozedUntil: $0.snoozedUntil, now: now, rest: rest)
         }
         guard !due.isEmpty else { return }
 

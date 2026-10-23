@@ -50,6 +50,14 @@ final class Pin {
 
     var isCompleted: Bool { completedAt != nil }
 
+    /// Still waiting to find you. A next-visit pin disarms once it has surfaced.
+    var isArmed: Bool {
+        SurfacingPolicy.isArmed(isAmbient: isAmbient, isCompleted: isCompleted, lastSurfacedAt: lastSurfacedAt)
+    }
+
+    /// Already surfaced and waiting to be ticked off.
+    var wasReminded: Bool { !isCompleted && !isArmed }
+
     var source: PinSource { PinSource(rawValue: sourceRaw) ?? .app }
 }
 

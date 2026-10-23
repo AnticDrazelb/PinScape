@@ -101,6 +101,7 @@ final class AppModel {
     func undoLastCapture() {
         guard let undo, Date().timeIntervalSince(undo.createdAt) < 10 else { return }
         PinActions.delete(undo.pinID)
+        CaptureFeedback.undone()
         withAnimation(.snappy) { self.undo = nil }
         VoiceConfirmation.shared.say("Undone.")
     }

@@ -31,7 +31,8 @@ struct PlaceMarker: Identifiable, Hashable {
 struct HomeMapCard: View {
     @Environment(LocationEngine.self) private var engine
     var markers: [PlaceMarker]
-    var watching: Int
+    /// Pins still waiting to find you.
+    var armed: Int
 
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
 
@@ -55,7 +56,7 @@ struct HomeMapCard: View {
         .overlay(alignment: .topLeading) {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(watching > 0 ? Color.green : Color.secondary)
+                    .fill(statusColor)
                     .frame(width: 7, height: 7)
                 Text(statusText)
                     .font(.caption.weight(.semibold))
@@ -80,12 +81,20 @@ struct HomeMapCard: View {
         .accessibilityAddTraits(.isButton)
     }
 
+    /// Pins are "armed" only when iOS can wake Pinscape on arrival; otherwise they're just waiting.
+    private var isLive: Bool {
+        engine.canSurfaceInBackground || PinStore.isDemo
+    }
+
     private var statusText: String {
-        switch watching {
-        case 0: return "Drop a pin to start"
-        case 1: return "Watching 1 place nearby"
-        default: return "Watching \(watching) places nearby"
-        }
+        if armed == 0 { return "Drop a pin to start" }
+        let pins = armed == 1 ? "1 pin" : "\(armed) pins"
+        return isLive ? "\(pins) armed" : "\(pins) waiting"
+    }
+
+    private var statusColor: Color {
+        guard armed > 0 else { return .secondary }
+        return isLive ? .green : .orange
     }
 
     private func frame() {
@@ -100,7 +109,7 @@ struct HomeMapCard: View {
     }
 }
 
-/// Every place Pinscape is watching, full screen.
+/// Every place your pins are waiting at, full screen.
 struct PinMapView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(LocationEngine.self) private var engine
@@ -153,7 +162,7 @@ struct PinMapView: View {
                 }
             }
             .animation(.snappy, value: selection)
-            .navigationTitle("Watched places")
+            .navigationTitle("Your pins")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

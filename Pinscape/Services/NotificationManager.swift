@@ -65,11 +65,10 @@ enum NotificationManager {
                 }
             }
         case laterAction:
-            // Quiet for this visit; it comes back next time you arrive.
+            // Not now: quiet for this visit, back the next time you arrive.
             for id in ids {
-                PinActions.pin(id: id)?.snoozedUntil = Date().addingTimeInterval(45 * 60)
+                PinActions.rearm(id)
             }
-            PinActions.save()
         case UNNotificationDefaultActionIdentifier:
             AppModel.shared.showHereNow(regionID: regionID)
         default:

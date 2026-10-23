@@ -14,10 +14,10 @@ Pinscape lets you drop voice or text notes tied to real-world places, then surfa
 
 | | |
 |---|---|
-| **Frictionless capture** | Action Button, Back Tap, Lock Screen widget, Control Center control, Siri, Share Sheet. Voice first with the text field always visible. Spoken confirmation ("Got it. Tesco, batteries.") and **shake to undo**. |
+| **Frictionless capture** | Action Button, Back Tap, Lock Screen widget, Control Center control, Siri, Share Sheet. Voice first with the text field always visible. A two-beat haptic and a soft chime so you feel it land without looking, then a spoken confirmation ("Got it. Tesco, batteries.") and **shake to undo**. |
 | **Fuzzy places, not addresses** | "Tesco" means *any* Tesco. "Any pharmacy" means the nearest one. "Near gym" is 400 m around your saved gym. "Downtown" is 1 km around your town centre. "This bench" is where you're standing. "Pub near office" finds the pub closest to your office. All through Apple Maps. No postcodes. |
 | **Smart suggestions, zero admin** | Say "wood stain" and Pinscape suggests B&Q. Share a screenshot with "Currys" on it and Pinscape reads it on device and suggests Currys. Share an IKEA product link and it suggests IKEA. Your calendar spots trips: "Off to Bristol on Saturday. Any pins to drop?" |
-| **Ambient pins** | "This bench = call dad". An *every visit* pin comes back each time you're there, not just once. |
+| **Next visit or every visit** | New pins remind you on your **next visit only**, then wait in your list (re-arm with one tap). Switch a pin to **every visit** for ambient notes like "this bench = call dad", which come back each time you're there. |
 | **Live Activities** | When you arrive somewhere with pins, a checklist appears on the Lock Screen and in the Dynamic Island. Tick things off without unlocking. |
 | **Widgets** | A Lock Screen capture button, waiting pins on the Lock Screen and Home Screen, and interactive tick-off buttons. |
 | **Private by design** | On-device speech recognition, an on-device encrypted store, no account, no cloud, no analytics. iOS tells Pinscape only that you arrived somewhere you pinned. |
@@ -58,7 +58,7 @@ Then `PlaceResolver` turns the phrase into a `PlaceTarget`: a chain (any branch)
 ### Surfacing: getting around the 20-region limit
 iOS only lets an app watch 20 regions, but "any Tesco" can mean hundreds of shops. `GeofencePlanner` keeps the **19 nearest** candidate places watched and draws a **boundary circle** around you. Leaving the boundary wakes Pinscape, which searches Apple Maps for the nearest branches again and swaps them in. Significant location changes act as a backstop.
 
-When a region fires, iOS relaunches Pinscape in the background for a few seconds. `ArrivalCoordinator` matches the region to your pins, applies the cooldown rules in `SurfacingPolicy` (no nagging when you pop in and out), posts a time-sensitive notification with **Done** and **Next visit** actions, and starts the Live Activity checklist.
+When a region fires, iOS relaunches Pinscape in the background for a few seconds. `ArrivalCoordinator` matches the region to your pins and applies `SurfacingPolicy`: a next-visit pin surfaces once and then disarms (so it stops using one of the 20 slots), and an every-visit pin rests for a few hours between visits so popping in and out doesn't nag. It posts a time-sensitive notification with **Done** and **Next visit** actions and starts the Live Activity checklist.
 
 ### Data
 Pins and places live in SwiftData inside the App Group container, so the app, widgets and share extension share one store. The store is protected with iOS Data Protection (`completeUntilFirstUserAuthentication`), which keeps it encrypted at rest while still letting an arrival be handled with the phone locked. Nothing syncs anywhere.
@@ -137,7 +137,7 @@ In Xcode, ⌘U runs the same tests on the simulator.
 | | |
 |---|---|
 | Free | 10 active pins, 1 saved place |
-| Pro | £2.99/month or £24.99/year: unlimited pins and places, place groups, NFC stickers, export to Notes |
+| Pro | **£2.99/month** (or £24.99/year, save 30%): unlimited pins and places, place groups, NFC stickers, export to Notes |
 | Sticker Pack | £9.99 once: NFC sticker pins for pantry and office |
 
 Product IDs: `com.pinscape.pro.monthly`, `com.pinscape.pro.yearly`, `com.pinscape.stickerpack`. Create them in App Store Connect with the same IDs.

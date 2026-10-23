@@ -73,13 +73,32 @@ final class PlacesTests: XCTestCase {
         XCTAssertEqual(nearGym.title, "Near Gym")
     }
 
-    func testSurfacingPolicy() {
+    func testNextVisitPinsSurfaceOnce() {
         let now = Date()
         let made = now.addingTimeInterval(-3600)
         XCTAssertTrue(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: false, createdAt: made, lastSurfacedAt: nil, snoozedUntil: nil, now: now))
-        XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: true, createdAt: made, lastSurfacedAt: nil, snoozedUntil: nil, now: now))
-        XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: false, createdAt: now.addingTimeInterval(-30), lastSurfacedAt: nil, snoozedUntil: nil, now: now))
+        // Already reminded you: disarmed, even days later.
+        XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: false, createdAt: made, lastSurfacedAt: now.addingTimeInterval(-3 * 86_400), snoozedUntil: nil, now: now))
+        XCTAssertFalse(SurfacingPolicy.isArmed(isAmbient: false, isCompleted: false, lastSurfacedAt: now))
+        XCTAssertTrue(SurfacingPolicy.isArmed(isAmbient: false, isCompleted: false, lastSurfacedAt: nil))
+    }
+
+    func testEveryVisitPinsRestBetweenVisits() {
+        let now = Date()
+        let made = now.addingTimeInterval(-86_400 * 7)
+        XCTAssertTrue(SurfacingPolicy.isArmed(isAmbient: true, isCompleted: false, lastSurfacedAt: now))
         XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: true, isCompleted: false, createdAt: made, lastSurfacedAt: now.addingTimeInterval(-3600), snoozedUntil: nil, now: now))
+        XCTAssertTrue(SurfacingPolicy.shouldSurface(isAmbient: true, isCompleted: false, createdAt: made, lastSurfacedAt: now.addingTimeInterval(-86_400), snoozedUntil: nil, now: now))
+        XCTAssertTrue(SurfacingPolicy.shouldSurface(isAmbient: true, isCompleted: false, createdAt: made, lastSurfacedAt: now.addingTimeInterval(-3600), snoozedUntil: nil, now: now, rest: 1800))
+    }
+
+    func testSurfacingGuards() {
+        let now = Date()
+        let made = now.addingTimeInterval(-3600)
+        XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: true, createdAt: made, lastSurfacedAt: nil, snoozedUntil: nil, now: now))
+        XCTAssertFalse(SurfacingPolicy.isArmed(isAmbient: true, isCompleted: true, lastSurfacedAt: nil))
+        // Made a moment ago, standing right there.
+        XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: false, createdAt: now.addingTimeInterval(-30), lastSurfacedAt: nil, snoozedUntil: nil, now: now))
         XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: false, createdAt: made, lastSurfacedAt: nil, snoozedUntil: now.addingTimeInterval(60), now: now))
     }
 }

@@ -8,12 +8,13 @@ struct PaywallView: View {
 
     let reason: PaywallReason
 
-    @State private var plan: Plan = .yearly
+    /// Monthly leads: £2.99 is an easier first yes than a year up front.
+    @State private var plan: Plan = .monthly
     @State private var isWorking = false
     @State private var message: String?
 
     enum Plan {
-        case yearly, monthly
+        case monthly, yearly
     }
 
     private let features: [(symbol: String, title: String, detail: String)] = [
@@ -121,37 +122,39 @@ struct PaywallView: View {
     private var planPicker: some View {
         VStack(spacing: 10) {
             PlanCard(
-                title: "Yearly",
-                price: store.yearly?.displayPrice ?? "£24.99",
-                detail: "\(monthlyEquivalent) a month · best value",
-                badge: "SAVE 30%",
-                selected: plan == .yearly
-            )
-            .onTapGesture { plan = .yearly }
-
-            PlanCard(
                 title: "Monthly",
-                price: store.monthly?.displayPrice ?? "£2.99",
-                detail: "Cancel any time",
+                price: monthlyPrice,
+                detail: "Try it for a month · cancel any time",
                 badge: nil,
                 selected: plan == .monthly
             )
             .onTapGesture { plan = .monthly }
+
+            PlanCard(
+                title: "Yearly",
+                price: yearlyPrice,
+                detail: "Works out at \(monthlyEquivalent) a month",
+                badge: "SAVE 30%",
+                selected: plan == .yearly
+            )
+            .onTapGesture { plan = .yearly }
         }
         .sensoryFeedback(.selection, trigger: plan)
     }
 
     private var purchaseButton: some View {
         Button {
-            Task { await buy(plan == .yearly ? store.yearly : store.monthly) }
+            Task { await buy(plan == .monthly ? store.monthly : store.yearly) }
         } label: {
             ZStack {
                 if isWorking {
                     ProgressView().tint(.white)
                 } else {
-                    Text("Continue")
+                    Text(purchaseTitle)
                         .font(.headline)
                         .foregroundStyle(.white)
+                        .contentTransition(.numericText())
+                        .animation(.snappy, value: plan)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -213,6 +216,13 @@ struct PaywallView: View {
                 .foregroundStyle(.white.opacity(0.45))
                 .multilineTextAlignment(.center)
         }
+    }
+
+    private var monthlyPrice: String { store.monthly?.displayPrice ?? "£2.99" }
+    private var yearlyPrice: String { store.yearly?.displayPrice ?? "£24.99" }
+
+    private var purchaseTitle: String {
+        plan == .monthly ? "Start Pro · \(monthlyPrice) a month" : "Start Pro · \(yearlyPrice) a year"
     }
 
     private var monthlyEquivalent: String {

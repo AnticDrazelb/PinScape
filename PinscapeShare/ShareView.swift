@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ShareView: View {
     @Bindable var model: ShareModel
@@ -31,11 +32,15 @@ struct ShareView: View {
                         }
                     }
                     placeSection
-                    Toggle(isOn: $model.isAmbient) {
-                        Label("Every visit", systemImage: "repeat")
+                    section("Remind me") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            RemindModePicker(isAmbient: $model.isAmbient)
+                            Text(RemindModePicker.explanation(isAmbient: model.isAmbient))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 4)
+                        }
                     }
-                    .padding(16)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 .padding(20)
             }
@@ -55,6 +60,7 @@ struct ShareView: View {
                     Button("Pin it") {
                         model.save()
                         if model.saved {
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
                             Task {
                                 try? await Task.sleep(for: .milliseconds(900))
                                 close()

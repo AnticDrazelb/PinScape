@@ -31,6 +31,7 @@
 		3F6A890D6908859AEAB074EC /* GeofencePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 477677A40FC53F226289A870 /* GeofencePlanner.swift */; };
 		40D6C3C119EE8F8273E1F66A /* PlaceSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 418AF72A76602CA80C3DFB3C /* PlaceSuggester.swift */; };
 		42961492061DB3A7B20894FF /* ProStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA8F84C9123B9B197A27A574 /* ProStore.swift */; };
+		44560F2B3D9501979671D264 /* PinDrop.wav in Resources */ = {isa = PBXBuildFile; fileRef = 7FC8778B430973CAA5C42FA3 /* PinDrop.wav */; };
 		468419C303D052BC2C92D692 /* SurfacingPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DA1A899AB35902CED36CD28 /* SurfacingPolicy.swift */; };
 		489CED3DDE6B17BA206CBE78 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D15F3190062F00C11BF8AEB /* PaywallView.swift */; };
 		4AA49239ECA0AD9E8C3C6747 /* ArrivalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CE65B5C2D73A562162C9468 /* ArrivalCoordinator.swift */; };
@@ -71,6 +72,7 @@
 		AADDBE54B2A6B501DC9FEC94 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDAAA69573EF898578692E /* Theme.swift */; };
 		AB30B58EB3AB16F298F822C7 /* SurfacingPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DA1A899AB35902CED36CD28 /* SurfacingPolicy.swift */; };
 		ABA0F29F1C5AA289E80AAB6B /* PinscapeIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6E0330C2276AD404ED89AC /* PinscapeIntents.swift */; };
+		ACC10932CDF1E2B2E8C47C74 /* CaptureFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 206DCB6805E646F31167A108 /* CaptureFeedback.swift */; };
 		AD5A2DBEBC4D788BC733872B /* PlacePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDB2AD889C02FF78F4219C0 /* PlacePickerView.swift */; };
 		B19D647D3CD4E2DFB05E1802 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0BCCEC166BF0B4EBD328C0 /* TextNormalizer.swift */; };
 		B55E1211E724B0081D50C206 /* GeoPoint+CoreLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107BE4DD79C204E8D5005401 /* GeoPoint+CoreLocation.swift */; };
@@ -155,6 +157,7 @@
 		120B22A8245F476740D5E799 /* PinscapeWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PinscapeWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		17814998F4C97936D38B375A /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		1D0BCCEC166BF0B4EBD328C0 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
+		206DCB6805E646F31167A108 /* CaptureFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureFeedback.swift; sourceTree = "<group>"; };
 		24243A39EFFF9A340AA0A681 /* PinscapeWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinscapeWidgetsBundle.swift; sourceTree = "<group>"; };
 		264CE72BA49185F2BB44D739 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		27DE774A29A11E67BC196E30 /* PinActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinActivityAttributes.swift; sourceTree = "<group>"; };
@@ -177,6 +180,7 @@
 		7C6E0330C2276AD404ED89AC /* PinscapeIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinscapeIntents.swift; sourceTree = "<group>"; };
 		7EBB9B54AAD60436AEF31682 /* MapViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViews.swift; sourceTree = "<group>"; };
 		7EDB2AD889C02FF78F4219C0 /* PlacePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacePickerView.swift; sourceTree = "<group>"; };
+		7FC8778B430973CAA5C42FA3 /* PinDrop.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = PinDrop.wav; sourceTree = "<group>"; };
 		808C896F77EC4734FD7E8260 /* PlacesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesView.swift; sourceTree = "<group>"; };
 		8B373D6799E1E662375B3052 /* GeofencePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeofencePlannerTests.swift; sourceTree = "<group>"; };
 		8D15F3190062F00C11BF8AEB /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
@@ -273,6 +277,7 @@
 			children = (
 				0CE65B5C2D73A562162C9468 /* ArrivalCoordinator.swift */,
 				BDB6E6AF2DB34ECCED292EEF /* CalendarScout.swift */,
+				206DCB6805E646F31167A108 /* CaptureFeedback.swift */,
 				BE2E2F91BC7F5EF615447C72 /* LiveActivityController.swift */,
 				E704E0358E86C0B6EAC9EA38 /* LocationEngine.swift */,
 				D6CAB2EEE34B9BD91C957C1D /* NotificationManager.swift */,
@@ -406,6 +411,7 @@
 		B4838030D9C78492CEC65DE3 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				FC9A95CF706E88F6BEC3390F /* Sounds */,
 				A13F7149BCDC5D95A291360F /* Assets.xcassets */,
 				3DA03C01E4F61BDFA19CFCD7 /* Pinscape.storekit */,
 			);
@@ -501,6 +507,14 @@
 				7C6E0330C2276AD404ED89AC /* PinscapeIntents.swift */,
 			);
 			path = Intents;
+			sourceTree = "<group>";
+		};
+		FC9A95CF706E88F6BEC3390F /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				7FC8778B430973CAA5C42FA3 /* PinDrop.wav */,
+			);
+			path = Sounds;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -633,6 +647,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				95BE0F04B82F5FF41DED09D1 /* Assets.xcassets in Resources */,
+				44560F2B3D9501979671D264 /* PinDrop.wav in Resources */,
 				3332A74847B74AC729D22AEA /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -649,6 +664,7 @@
 				4AA49239ECA0AD9E8C3C6747 /* ArrivalCoordinator.swift in Sources */,
 				FD3AC07C69EA211FE68E01A1 /* BrandCatalog.swift in Sources */,
 				325F65DA7F7F83B5FA448E60 /* CalendarScout.swift in Sources */,
+				ACC10932CDF1E2B2E8C47C74 /* CaptureFeedback.swift in Sources */,
 				B730A977A6C28139628276BF /* CaptureModel.swift in Sources */,
 				9818D63EDE9EF5940960C2EF /* CaptureParser.swift in Sources */,
 				6C7971BA024A15B5FE8AFBF7 /* CaptureView.swift in Sources */,

@@ -38,7 +38,7 @@ struct HomeView: View {
         NavigationStack {
             List {
                 Section {
-                    HomeMapCard(markers: mapMarkers, watching: engine.regions.count)
+                    HomeMapCard(markers: mapMarkers, armed: pins.filter(\.isArmed).count)
                         .contentShape(Rectangle())
                         .onTapGesture { model.sheet = .map }
                 }
@@ -95,6 +95,14 @@ struct HomeView: View {
                                         Label("Done", systemImage: "checkmark")
                                     }
                                     .tint(.green)
+                                    if pin.wasReminded {
+                                        Button {
+                                            withAnimation(.snappy) { PinActions.rearm(pin.id) }
+                                        } label: {
+                                            Label("Again", systemImage: "arrow.clockwise")
+                                        }
+                                        .tint(.orange)
+                                    }
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
@@ -105,6 +113,9 @@ struct HomeView: View {
                                 }
                                 .contextMenu {
                                     Button("Done", systemImage: "checkmark.circle") { PinActions.setCompleted(pin.id, true) }
+                                    if pin.wasReminded {
+                                        Button("Remind me next visit", systemImage: "arrow.clockwise") { PinActions.rearm(pin.id) }
+                                    }
                                     Button("Edit", systemImage: "pencil") { model.sheet = .pin(pin.id) }
                                     Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = pin.text }
                                     Divider()
@@ -317,6 +328,8 @@ struct PinRow: View {
                 HStack(spacing: 6) {
                     if pin.isAmbient {
                         Badge(text: "Every visit", symbol: "repeat", tint: .purple)
+                    } else if pin.wasReminded {
+                        Badge(text: "Reminded", symbol: "bell.fill", tint: .orange)
                     }
                     if pin.capturedByVoice {
                         Image(systemName: "waveform")

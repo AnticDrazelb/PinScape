@@ -89,3 +89,22 @@ struct PlaceChip: View {
         .contentShape(Capsule())
     }
 }
+
+/// "Next visit only" (the default) or "Every visit".
+struct RemindModePicker: View {
+    @Binding var isAmbient: Bool
+
+    var body: some View {
+        Picker("Remind me", selection: $isAmbient) {
+            Text("Next visit only").tag(false)
+            Text("Every visit").tag(true)
+        }
+        .pickerStyle(.segmented)
+    }
+
+    static func explanation(isAmbient: Bool, wasReminded: Bool = false) -> String {
+        if isAmbient { return "Comes back each time you're there, like a note left on a bench." }
+        if wasReminded { return "Already reminded you there. It waits in your list until you tick it off." }
+        return "Reminds you the next time you arrive, then waits in your list."
+    }
+}

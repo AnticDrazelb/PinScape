@@ -159,7 +159,8 @@ final class LocationEngine: NSObject {
         if hasAccess {
             here = await currentLocation(maxAge: 300)
         }
-        let pins = PinActions.activePins()
+        // Pins that already reminded you don't take up any of iOS's 20 watched places.
+        let pins = PinActions.activePins().filter(\.isArmed)
         let places = PinActions.savedPlaces()
 
         var candidates: [RegionCandidate] = []

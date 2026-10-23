@@ -12,7 +12,8 @@ struct SettingsView: View {
 
     @State private var voiceConfirmation = PinscapeSettings.voiceConfirmation
     @State private var shakeToUndo = PinscapeSettings.shakeToUndo
-    @State private var cooldown = PinscapeSettings.cooldownHours
+    @State private var confirmationSound = PinscapeSettings.confirmationSound
+    @State private var restHours = PinscapeSettings.everyVisitRestHours
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var paywall: PaywallReason?
     @State private var confirmClear = false
@@ -27,6 +28,9 @@ struct SettingsView: View {
                 .listRowBackground(Color.clear)
 
                 Section("Capture") {
+                    Toggle(isOn: $confirmationSound) {
+                        SettingLabel("Haptic & chime", detail: "Feel it land without looking", symbol: "bell.and.waves.left.and.right.fill", color: .teal)
+                    }
                     Toggle(isOn: $voiceConfirmation) {
                         SettingLabel("Speak confirmation", detail: "“Got it. Tesco, batteries.”", symbol: "speaker.wave.2.fill", color: .pink)
                     }
@@ -41,18 +45,18 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Picker(selection: $cooldown) {
+                    Picker(selection: $restHours) {
                         Text("1 hour").tag(1.0)
-                        Text("2 hours").tag(2.0)
+                        Text("3 hours").tag(3.0)
                         Text("6 hours").tag(6.0)
                         Text("A day").tag(24.0)
                     } label: {
-                        SettingLabel("Quiet after surfacing", detail: nil, symbol: "moon.zzz.fill", color: .purple)
+                        SettingLabel("Every-visit pins rest", detail: nil, symbol: "moon.zzz.fill", color: .purple)
                     }
                 } header: {
                     Text("Reminders")
                 } footer: {
-                    Text("How long a pin stays quiet after it finds you, so popping in and out of a shop doesn't nag.")
+                    Text("New pins remind you on your next visit, then wait in your list. Every-visit pins come back each time, resting in between so popping in and out doesn't nag.")
                 }
 
                 Section("Permissions") {
@@ -124,7 +128,7 @@ struct SettingsView: View {
 
                 Section {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
-                    LabeledContent("Watching", value: "\(engine.regions.count) of 20 regions")
+                    LabeledContent("Places armed", value: "\(engine.regions.count) of 20")
                 } footer: {
                     Text("Pinscape · Leave thoughts in the real world.")
                         .frame(maxWidth: .infinity)
@@ -151,7 +155,8 @@ struct SettingsView: View {
             }
             .onChange(of: voiceConfirmation) { _, value in PinscapeSettings.voiceConfirmation = value }
             .onChange(of: shakeToUndo) { _, value in PinscapeSettings.shakeToUndo = value }
-            .onChange(of: cooldown) { _, value in PinscapeSettings.cooldownHours = value }
+            .onChange(of: confirmationSound) { _, value in PinscapeSettings.confirmationSound = value }
+            .onChange(of: restHours) { _, value in PinscapeSettings.everyVisitRestHours = value }
             .task {
                 if PinStore.isDemo {
                     notificationStatus = .authorized
@@ -176,7 +181,7 @@ struct SettingsView: View {
                     Text(store.isPro ? "Pinscape Pro" : "Upgrade to Pro")
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text(store.isPro ? "Unlimited pins, groups and stickers. Thank you." : "Unlimited pins, place groups, NFC stickers, export.")
+                    Text(proCardDetail)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.leading)
@@ -192,6 +197,12 @@ struct SettingsView: View {
             .cardBackground()
         }
         .buttonStyle(.plain)
+    }
+
+    private var proCardDetail: String {
+        if store.isPro { return "Unlimited pins, groups and stickers. Thank you." }
+        let price = store.monthly?.displayPrice ?? "£2.99"
+        return "Unlimited pins, place groups, NFC stickers, export. From \(price) a month."
     }
 
     private var locationText: String {

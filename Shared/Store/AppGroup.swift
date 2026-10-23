@@ -27,7 +27,8 @@ enum SharedKeys {
     static let searchCache = "searchCache"
     static let voiceConfirmation = "voiceConfirmation"
     static let shakeToUndo = "shakeToUndo"
-    static let cooldownHours = "cooldownHours"
+    static let everyVisitRestHours = "everyVisitRestHours"
+    static let confirmationSound = "confirmationSound"
     static let hasOnboarded = "hasOnboarded"
     static let lastLatitude = "lastLatitude"
     static let lastLongitude = "lastLongitude"
@@ -47,10 +48,16 @@ enum PinscapeSettings {
         set { AppGroup.defaults.set(newValue, forKey: SharedKeys.shakeToUndo) }
     }
 
-    /// Hours before the same pin can surface again.
-    static var cooldownHours: Double {
-        get { AppGroup.defaults.object(forKey: SharedKeys.cooldownHours) as? Double ?? 2 }
-        set { AppGroup.defaults.set(newValue, forKey: SharedKeys.cooldownHours) }
+    /// The chime and haptic when a pin is dropped.
+    static var confirmationSound: Bool {
+        get { AppGroup.defaults.object(forKey: SharedKeys.confirmationSound) as? Bool ?? true }
+        set { AppGroup.defaults.set(newValue, forKey: SharedKeys.confirmationSound) }
+    }
+
+    /// Hours an every-visit pin rests after surfacing.
+    static var everyVisitRestHours: Double {
+        get { AppGroup.defaults.object(forKey: SharedKeys.everyVisitRestHours) as? Double ?? SurfacingPolicy.defaultRest / 3600 }
+        set { AppGroup.defaults.set(newValue, forKey: SharedKeys.everyVisitRestHours) }
     }
 
     /// Last known position, kept so extensions can rank places without asking for location.

@@ -44,9 +44,15 @@ enum DemoContent {
         add("Oat milk — the barista one", supermarkets.target(), voice: true, age: 10_000)
         add("Rice and lentils running low", pantry.target(), age: 5_000)
 
-        if let callDad = PinActions.activePins(in: context).first(where: { $0.text == "Call Dad" }) {
+        let seeded = PinActions.activePins(in: context)
+        if let callDad = seeded.first(where: { $0.text == "Call Dad" }) {
             callDad.lastSurfacedAt = now.addingTimeInterval(-86_400)
             callDad.surfaceCount = 6
+        }
+        // Reminded at Boots yesterday, not ticked off yet.
+        if let hayFever = seeded.first(where: { $0.text == "Hay fever tablets" }) {
+            hayFever.lastSurfacedAt = now.addingTimeInterval(-80_000)
+            hayFever.surfaceCount = 1
         }
         let done = Pin(text: "Post the birthday card", place: .category(.postOffice))
         done.createdAt = now.addingTimeInterval(-200_000)

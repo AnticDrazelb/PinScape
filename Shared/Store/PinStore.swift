@@ -114,6 +114,15 @@ enum PinActions {
         setCompleted(id, !pin.isCompleted)
     }
 
+    /// Brings a reminded next-visit pin back for the next time you arrive.
+    static func rearm(_ id: UUID) {
+        guard let pin = pin(id: id) else { return }
+        pin.lastSurfacedAt = nil
+        // You may be standing there now; wait for a real next visit.
+        pin.snoozedUntil = Date().addingTimeInterval(45 * 60)
+        didChange()
+    }
+
     static func delete(_ id: UUID) {
         guard let pin = pin(id: id) else { return }
         PinStore.context.delete(pin)

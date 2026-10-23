@@ -65,7 +65,6 @@ struct CaptureView: View {
         }
         .preferredColorScheme(.dark)
         .animation(.spring(duration: 0.45, bounce: 0.3), value: model.stage)
-        .sensoryFeedback(.success, trigger: model.stage == .saved)
         .sensoryFeedback(.impact(weight: .light), trigger: model.speech.isListening)
         .sheet(isPresented: $showPicker) {
             PlacePickerView(note: model.note) { target in
@@ -73,6 +72,7 @@ struct CaptureView: View {
             }
         }
         .task {
+            CaptureFeedback.prepare()
             if request.listen && !PinStore.isDemo {
                 await listen()
             } else if !PinStore.isDemo && request.text.isEmpty {
@@ -120,14 +120,18 @@ struct CaptureView: View {
                 model.isAmbient.toggle()
                 model.userInteracted()
             } label: {
-                Label("Every visit", systemImage: "repeat")
+                Label(model.isAmbient ? "Every visit" : "Next visit", systemImage: model.isAmbient ? "repeat" : "1.circle")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(model.isAmbient ? .white : .white.opacity(0.65))
+                    .foregroundStyle(.white.opacity(model.isAmbient ? 1 : 0.8))
+                    .contentTransition(.symbolEffect(.replace))
                     .padding(.horizontal, 14)
                     .frame(height: 40)
+                    .animation(.snappy, value: model.isAmbient)
             }
             .glassSurface(in: Capsule(), interactive: true, tint: model.isAmbient ? Theme.rose : nil)
-            .accessibilityValue(model.isAmbient ? "On" : "Off")
+            .accessibilityLabel("Remind me")
+            .accessibilityValue(model.isAmbient ? "Every visit" : "Next visit only")
+            .accessibilityHint("Switches between reminding you once and every time you're there")
         }
     }
 

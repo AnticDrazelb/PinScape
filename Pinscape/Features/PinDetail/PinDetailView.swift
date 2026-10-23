@@ -61,17 +61,24 @@ struct PinDetailView: View {
             }
 
             Section {
-                Toggle(isOn: Binding(
+                RemindModePicker(isAmbient: Binding(
                     get: { pin.isAmbient },
                     set: {
                         pin.isAmbient = $0
                         PinActions.didChange()
                     }
-                )) {
-                    Label("Every visit", systemImage: "repeat")
+                ))
+                if pin.wasReminded {
+                    Button {
+                        PinActions.rearm(pin.id)
+                    } label: {
+                        Label("Remind me again next visit", systemImage: "arrow.clockwise")
+                    }
                 }
+            } header: {
+                Text("Remind me")
             } footer: {
-                Text(pin.isAmbient ? "Comes back each time you're there, like a note left on a bench." : "Surfaces once, then waits until you tick it off.")
+                Text(RemindModePicker.explanation(isAmbient: pin.isAmbient, wasReminded: pin.wasReminded))
             }
 
             mapSection(target)

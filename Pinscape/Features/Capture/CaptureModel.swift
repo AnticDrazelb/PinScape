@@ -224,6 +224,7 @@ final class CaptureModel {
         let pin = PinActions.add(text: note, place: place, isAmbient: isAmbient, capturedByVoice: usedVoice, source: usedVoice ? .voice : source)
         savedPin = pin
         stage = .saved
+        CaptureFeedback.pinDropped()
         VoiceConfirmation.shared.say(SurfacingPolicy.confirmation(place: place.title, note: note))
         return true
     }

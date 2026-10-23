@@ -61,6 +61,8 @@ final class SpeechCapture {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker])
+            // Keep the haptic ticks while the microphone is live.
+            try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
 
             let request = SFSpeechAudioBufferRecognitionRequest()
@@ -213,6 +215,8 @@ final class VoiceConfirmation: NSObject, AVSpeechSynthesizerDelegate {
         utterance.voice = AVSpeechSynthesisVoice(language: AVSpeechSynthesisVoice.currentLanguageCode())
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 1.04
         utterance.prefersAssistiveTechnologySettings = true
+        // Let the pin-drop chime finish first.
+        utterance.preUtteranceDelay = PinscapeSettings.confirmationSound ? 0.35 : 0
         synthesizer.stopSpeaking(at: .immediate)
         synthesizer.speak(utterance)
     }
