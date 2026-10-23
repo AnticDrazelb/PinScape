@@ -89,6 +89,7 @@ enum ArrivalCoordinator {
         let due = pins.filter { surfacing.contains($0.id) }
         guard !due.isEmpty else { return RecordedArrival(pins: [], disarms: false) }
 
+        let before = due.map { (pin: $0, surfacedAt: $0.lastSurfacedAt, count: $0.surfaceCount) }
         for pin in due {
             pin.lastSurfacedAt = now
             pin.surfaceCount += 1
@@ -97,6 +98,12 @@ enum ArrivalCoordinator {
             try save(context)
         } catch {
             context.rollback()
+            // Rolling back doesn't reset objects already in memory, and a retry reads these same
+            // objects: put the values back so the pins are still due.
+            for item in before {
+                item.pin.lastSurfacedAt = item.surfacedAt
+                item.pin.surfaceCount = item.count
+            }
             Diagnostics.record(.saveFailed, "Arrival: \(error.localizedDescription)")
             throw PersistenceError.saveFailed(error.localizedDescription)
         }

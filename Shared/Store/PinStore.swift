@@ -182,7 +182,16 @@ enum PinActions {
         guard PinStore.isWritable else { throw PersistenceError.storeUnavailable }
         let pin = Pin(text: text, place: place, isAmbient: isAmbient, capturedByVoice: capturedByVoice, source: source)
         PinStore.context.insert(pin)
-        try commit()
+        do {
+            try commit()
+        } catch {
+            // Rolling back can leave the new pin in the context, where lists would show it and a
+            // later save would write it. It wasn't saved, so take it out.
+            if pin.modelContext != nil {
+                PinStore.context.delete(pin)
+            }
+            throw error
+        }
         afterChange()
         return pin
     }

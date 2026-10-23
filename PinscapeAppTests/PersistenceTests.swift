@@ -46,6 +46,21 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(seen.map(\.text), ["Desk from the screenshot"])
     }
 
+    /// What `PinActions.add` does when a save fails: the new pin mustn't linger to be shown or saved later.
+    func testAPinThatFailedToSaveIsTakenBackOut() throws {
+        let container = try PinStore.openPersistentContainer(at: storeURL)
+        let context = ModelContext(container)
+        let pin = Pin(text: "Batteries", place: tesco())
+        context.insert(pin)
+        context.rollback()
+        if pin.modelContext != nil {
+            context.delete(pin)
+        }
+        try context.save()
+        XCTAssertTrue(try context.fetch(FetchDescriptor<Pin>()).isEmpty)
+        XCTAssertTrue(try ModelContext(container).fetch(FetchDescriptor<Pin>()).isEmpty)
+    }
+
     func testDamagedStoreIsReportedAndLeftAlone() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let garbage = Data(repeating: 0xAB, count: 4096)
