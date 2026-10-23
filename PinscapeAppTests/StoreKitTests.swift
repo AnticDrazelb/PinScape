@@ -23,10 +23,24 @@ final class StoreKitTests: XCTestCase {
         await ProStore.shared.refreshEntitlements()
     }
 
+    /// Loads a product from the test session. iOS 26.4 and 26.5 simulators serve no products to
+    /// `SKTestSession` (an Apple bug), so there the purchase tests skip; CI runs them on iOS 26.2.
+    private func product(_ id: String) async throws -> Product {
+        if let product = try await Product.products(for: [id]).first {
+            return product
+        }
+        #if targetEnvironment(simulator)
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        if os.majorVersion == 26, (4...5).contains(os.minorVersion) {
+            throw XCTSkip("StoreKit testing serves no products on the iOS 26.\(os.minorVersion) simulator")
+        }
+        #endif
+        XCTFail("The StoreKit configuration has no product \(id)")
+        throw CancellationError()
+    }
+
     private func buy(_ id: String) async throws -> Transaction {
-        let products = try await Product.products(for: [id])
-        let product = try XCTUnwrap(products.first)
-        let result = try await product.purchase()
+        let result = try await product(id).purchase()
         guard case .success(.verified(let transaction)) = result else {
             XCTFail("Purchase of \(id) didn't succeed: \(result)")
             throw CancellationError()
@@ -74,9 +88,7 @@ final class StoreKitTests: XCTestCase {
 
     func testAskToBuyStaysFreeUntilApproved() async throws {
         session.askToBuyEnabled = true
-        let products = try await Product.products(for: [Entitlements.monthlyID])
-        let product = try XCTUnwrap(products.first)
-        let result = try await product.purchase()
+        let result = try await product(Entitlements.monthlyID).purchase()
         let bought = await ProStore.shared.handle(result)
         XCTAssertFalse(bought)
         XCTAssertFalse(ProStore.shared.isPro)
