@@ -245,8 +245,20 @@ struct PinMapView: View {
     private func loadBranches() async {
         guard let here = engine.location ?? PinscapeSettings.lastKnownPoint.map({ CLLocation(latitude: $0.latitude, longitude: $0.longitude) }) else { return }
         await allBranches.load(searchSpecs, around: here)
-        // Step back to show them all.
-        withAnimation(.smooth(duration: 0.8)) { position = .automatic }
+        fitBranches(around: here.coordinate)
+    }
+
+    /// Steps back far enough to show you and every branch.
+    private func fitBranches(around here: CLLocationCoordinate2D) {
+        let coordinates = branchMarkers.map(\.coordinate) + [here]
+        guard coordinates.count > 1,
+              let south = coordinates.map(\.latitude).min(), let north = coordinates.map(\.latitude).max(),
+              let west = coordinates.map(\.longitude).min(), let east = coordinates.map(\.longitude).max() else { return }
+        let center = CLLocationCoordinate2D(latitude: (south + north) / 2, longitude: (west + east) / 2)
+        let span = MKCoordinateSpan(latitudeDelta: (north - south) * 1.3 + 0.02, longitudeDelta: (east - west) * 1.3 + 0.02)
+        withAnimation(.smooth(duration: 0.8)) {
+            position = .region(MKCoordinateRegion(center: center, span: span))
+        }
     }
 
     private func distance(to marker: PlaceMarker) -> Double? {
