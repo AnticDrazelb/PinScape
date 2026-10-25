@@ -9,18 +9,24 @@ struct PlaceMarker: Identifiable, Hashable {
     var radius: Double
     var symbol: String
     var colorHex: String
+    /// The street, for a branch found on Apple Maps.
+    var subtitle: String?
+    /// The chain or kind of place it belongs to (`RegionCandidate.key`), to find its pins.
+    var placeKey: String?
 
-    init(id: String, title: String, coordinate: CLLocationCoordinate2D, radius: Double, symbol: String, colorHex: String) {
+    init(id: String, title: String, coordinate: CLLocationCoordinate2D, radius: Double, symbol: String, colorHex: String, subtitle: String? = nil, placeKey: String? = nil) {
         self.id = id
         self.title = title
         self.coordinate = coordinate
         self.radius = radius
         self.symbol = symbol
         self.colorHex = colorHex
+        self.subtitle = subtitle
+        self.placeKey = placeKey
     }
 
     init(_ candidate: RegionCandidate, id: String) {
-        self.init(id: id, title: candidate.title, coordinate: candidate.center.coordinate, radius: candidate.radius, symbol: candidate.symbol, colorHex: candidate.colorHex)
+        self.init(id: id, title: candidate.title, coordinate: candidate.center.coordinate, radius: candidate.radius, symbol: candidate.symbol, colorHex: candidate.colorHex, subtitle: candidate.subtitle, placeKey: candidate.key)
     }
 
     static func == (lhs: PlaceMarker, rhs: PlaceMarker) -> Bool { lhs.id == rhs.id }
@@ -123,7 +129,8 @@ struct HomeMapCard: View {
     }
 }
 
-/// Every place your pins are waiting at, full screen.
+/// Every place your pins are waiting at, full screen. "Show all branches" adds every branch of
+/// those chains within 50 miles, to plan a trip around; only the nearby ones are watched.
 struct PinMapView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(LocationEngine.self) private var engine
@@ -131,6 +138,8 @@ struct PinMapView: View {
     @Query private var places: [SavedPlace]
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var selection: String?
+    @State private var showAllBranches = PinscapeSettings.showAllBranches || ProcessInfo.processInfo.arguments.contains("-PinscapeAllBranches")
+    @State private var allBranches = AllBranchesModel()
 
     private var markers: [PlaceMarker] {
         var result = engine.regions.map { PlaceMarker($0.candidate, id: $0.id) }
@@ -142,14 +151,44 @@ struct PinMapView: View {
         return result
     }
 
+    /// Branches beyond the watched ones, as small dots.
+    private var branchMarkers: [PlaceMarker] {
+        guard showAllBranches else { return [] }
+        let watched = engine.regions.map(\.candidate)
+        return allBranches.places.flatMap(\.branches)
+            .filter { branch in !watched.contains { $0.key == branch.key && $0.center.distance(to: branch.center) < 50 } }
+            .map { PlaceMarker($0, id: "branch|" + GeofencePlanner.regionID(for: $0)) }
+    }
+
     private var selectedMarker: PlaceMarker? {
-        markers.first { $0.id == selection }
+        markers.first { $0.id == selection } ?? branchMarkers.first { $0.id == selection }
+    }
+
+    /// Every chain or kind of place your pins are for, once each.
+    private var searchSpecs: [PlaceSearchSpec] {
+        var seen = Set<String>()
+        return pins
+            .flatMap { PinActions.resolvedTarget(for: $0, places: places).searches }
+            .filter { seen.insert($0.key).inserted }
+            .sorted { $0.key < $1.key }
     }
 
     var body: some View {
         NavigationStack {
             Map(position: $position, selection: $selection) {
                 UserAnnotation()
+                ForEach(branchMarkers) { marker in
+                    Annotation(marker.title, coordinate: marker.coordinate) {
+                        Circle()
+                            .fill(Color(hex: marker.colorHex))
+                            .frame(width: selection == marker.id ? 18 : 11, height: selection == marker.id ? 18 : 11)
+                            .overlay(Circle().stroke(.white, lineWidth: 2))
+                            .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+                            .animation(.snappy, value: selection)
+                    }
+                    .annotationTitles(.hidden)
+                    .tag(marker.id)
+                }
                 ForEach(markers) { marker in
                     MapCircle(center: marker.coordinate, radius: marker.radius)
                         .foregroundStyle(Color(hex: marker.colorHex).opacity(0.14))
@@ -168,14 +207,31 @@ struct PinMapView: View {
                 MapCompass()
                 MapScaleView()
             }
+            .safeAreaInset(edge: .top) {
+                AllBranchesToggle(isOn: showAllBranches, summary: allBranches.summary, isLoading: allBranches.isLoading) {
+                    showAllBranches.toggle()
+                }
+                .padding(.top, 8)
+            }
             .safeAreaInset(edge: .bottom) {
                 if let marker = selectedMarker {
-                    MarkerPinsCard(marker: marker, pins: pins(for: marker))
+                    MarkerPinsCard(marker: marker, pins: pins(for: marker), distance: distance(to: marker), isBranch: marker.id.hasPrefix("branch|"))
                         .padding()
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .animation(.snappy, value: selection)
+            .animation(.snappy, value: showAllBranches)
+            .task { if showAllBranches { await loadBranches() } }
+            .onChange(of: showAllBranches) { _, on in
+                PinscapeSettings.showAllBranches = on
+                if on {
+                    Task { await loadBranches() }
+                } else {
+                    if selection?.hasPrefix("branch|") == true { selection = nil }
+                    withAnimation { position = .userLocation(fallback: .automatic) }
+                }
+            }
             .navigationTitle("Your pins")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -186,7 +242,21 @@ struct PinMapView: View {
         }
     }
 
+    private func loadBranches() async {
+        guard let here = engine.location ?? PinscapeSettings.lastKnownPoint.map({ CLLocation(latitude: $0.latitude, longitude: $0.longitude) }) else { return }
+        await allBranches.load(searchSpecs, around: here)
+        // Step back to show them all.
+        withAnimation(.smooth(duration: 0.8)) { position = .automatic }
+    }
+
+    private func distance(to marker: PlaceMarker) -> Double? {
+        engine.location.map { $0.distance(from: CLLocation(latitude: marker.coordinate.latitude, longitude: marker.coordinate.longitude)) }
+    }
+
     private func pins(for marker: PlaceMarker) -> [Pin] {
+        if let key = marker.placeKey, marker.id.hasPrefix("branch|") {
+            return pins.filter { PinActions.resolvedTarget(for: $0, places: places).matches(regionKey: key) }
+        }
         if let region = engine.regions.first(where: { $0.id == marker.id }) {
             return pins.filter { PinActions.resolvedTarget(for: $0, places: places).matches(regionKey: region.candidate.key) }
         }
@@ -197,13 +267,25 @@ struct PinMapView: View {
 private struct MarkerPinsCard: View {
     let marker: PlaceMarker
     let pins: [Pin]
+    var distance: Double?
+    /// One of the branches shown for planning, rather than a watched place.
+    var isBranch = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 PlaceGlyph(symbol: marker.symbol, colorHex: marker.colorHex, size: 34)
-                Text(marker.title)
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(marker.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if let detail {
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
                 Spacer()
                 Text(pins.count == 1 ? "1 pin" : "\(pins.count) pins")
                     .font(.caption.weight(.semibold))
@@ -214,9 +296,67 @@ private struct MarkerPinsCard: View {
                     .font(.subheadline)
                     .lineLimit(1)
             }
+            if isBranch {
+                Button(action: openDirections) {
+                    Label("Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Theme.accent.opacity(0.15), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.accent)
+            }
         }
         .padding(16)
         .glassSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    /// "York Way · 2.4 mi"
+    private var detail: String? {
+        let parts = [marker.subtitle, distance.map(\.distanceText)].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func openDirections() {
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: marker.coordinate))
+        item.name = marker.title
+        item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDefault])
+    }
+}
+
+/// The switch for the all-branches layer, which doubles as its summary once on.
+private struct AllBranchesToggle: View {
+    var isOn: Bool
+    var summary: String
+    var isLoading: Bool
+    var toggle: () -> Void
+
+    var body: some View {
+        Button(action: toggle) {
+            HStack(spacing: 8) {
+                if isOn && isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: isOn ? "storefront.fill" : "storefront")
+                        .foregroundStyle(isOn ? Theme.accent : .secondary)
+                }
+                Text(isOn ? summary : "Show all branches")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                if isOn {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .glassSurface(in: Capsule(), interactive: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isOn ? "Hide all branches. \(summary)" : "Show all branches within 50 miles")
     }
 }
 

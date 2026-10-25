@@ -46,10 +46,51 @@ final class PlaceSearch {
             return BranchLookup(results: [], isFresh: false)
         }
 
+        var results = candidates(from: items, for: spec)
+        results.sort { $0.center.distance(to: here) < $1.center.distance(to: here) }
+        results = Array(results.prefix(limit))
+
+        // A real "none near here" is an answer too, and is cached like any other.
+        cache[spec.key] = Entry(center: here, date: Date(), results: results)
+        persist()
+        return BranchLookup(results: results, isFresh: true)
+    }
+
+    /// Every branch of a chain or kind of place within a wide area (50 miles), for planning on the
+    /// map. Nothing here is watched. Cached for a day while you stay within 10 km.
+    func allBranches(for spec: PlaceSearchSpec, around location: CLLocation, within radius: CLLocationDistance = BranchCoverage.planningRadius) async -> BranchLookup {
+        let here = GeoPoint(location.coordinate)
+        if let entry = wideCache[spec.key], entry.center.distance(to: here) < 10_000, Date().timeIntervalSince(entry.date) < 24 * 60 * 60 {
+            return BranchLookup(results: entry.results, isFresh: true)
+        }
+        var found: [[RegionCandidate]] = []
+        var complete = true
+        do {
+            let whole = try await searchItems(spec.query, near: location.coordinate, radius: radius, pointsOfInterestOnly: true)
+            found.append(candidates(from: whole, for: spec))
+            if whole.count >= BranchCoverage.fullResultCount {
+                for tile in BranchCoverage.tiles(around: here, radius: radius) {
+                    let items = try await searchItems(spec.query, near: tile.center.coordinate, radius: tile.halfSize, pointsOfInterestOnly: true)
+                    found.append(candidates(from: items, for: spec))
+                }
+            }
+        } catch {
+            // Throttled or offline part-way: show what was found.
+            complete = false
+        }
+        let merged = BranchCoverage.merge(found, around: here, within: radius)
+        if complete {
+            wideCache[spec.key] = Entry(center: here, date: Date(), results: merged)
+        }
+        return BranchLookup(results: merged, isFresh: complete)
+    }
+
+    private var wideCache: [String: Entry] = [:]
+
+    private func candidates(from items: [MKMapItem], for spec: PlaceSearchSpec) -> [RegionCandidate] {
         let category = spec.category ?? .other
-        var results: [RegionCandidate] = []
-        for item in items where spec.accepts(resultName: item.name ?? "") {
-            let candidate = RegionCandidate(
+        return items.filter { spec.accepts(resultName: $0.name ?? "") }.map { item in
+            RegionCandidate(
                 key: spec.key,
                 title: TextNormalizer.businessName(item.name ?? spec.query),
                 subtitle: Self.address(of: item),
@@ -58,15 +99,7 @@ final class PlaceSearch {
                 symbol: category.symbol,
                 colorHex: category.colorHex
             )
-            results.append(candidate)
         }
-        results.sort { $0.center.distance(to: here) < $1.center.distance(to: here) }
-        results = Array(results.prefix(limit))
-
-        // A real "none near here" is an answer too, and is cached like any other.
-        cache[spec.key] = Entry(center: here, date: Date(), results: results)
-        persist()
-        return BranchLookup(results: results, isFresh: true)
     }
 
     /// A plain Apple Maps search around a point. Errors become an empty list; use `searchItems` to tell them apart.

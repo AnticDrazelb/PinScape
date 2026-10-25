@@ -96,6 +96,20 @@ enum DemoContent {
         openRequestedScreen()
     }
 
+    /// Made-up branches scattered within 50 miles of King's Cross, for the all-branches screenshot.
+    /// The same every run, so screenshots don't jitter.
+    static func branches(for spec: PlaceSearchSpec) -> [RegionCandidate] {
+        let seed = spec.key.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
+        let count = 5 + seed % 11
+        let category = spec.category ?? .other
+        return (0..<count).map { index in
+            let angle = Double(seed % 360) + Double(index) * 137.5
+            let distance = 2_500 + 74_000 * Double(index) / Double(count)
+            let center = kingsCross.offset(north: cos(angle * .pi / 180) * distance, east: sin(angle * .pi / 180) * distance)
+            return RegionCandidate(key: spec.key, title: AllBranchesModel.name(for: spec), subtitle: nil, center: center, radius: PlaceTarget.storeRadius, symbol: category.symbol, colorHex: category.colorHex)
+        }
+    }
+
     private static func fixedCandidates() -> [RegionCandidate] {
         let places = PinActions.savedPlaces()
         return PinActions.activePins().compactMap { pin in

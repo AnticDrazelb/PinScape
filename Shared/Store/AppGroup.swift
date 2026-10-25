@@ -92,6 +92,7 @@ enum SharedKeys {
     static let everyVisitRestHours = "everyVisitRestHours"
     static let confirmationSound = "confirmationSound"
     static let arrivalChime = "arrivalChime"
+    static let showAllBranches = "showAllBranches"
     static let hasOnboarded = "hasOnboarded"
     static let lastLatitude = "lastLatitude"
     static let lastLongitude = "lastLongitude"
@@ -121,6 +122,12 @@ enum PinscapeSettings {
     static var arrivalChime: Bool {
         get { AppGroup.defaults.object(forKey: SharedKeys.arrivalChime) as? Bool ?? true }
         set { AppGroup.defaults.set(newValue, forKey: SharedKeys.arrivalChime) }
+    }
+
+    /// The map shows every branch within 50 miles of the places your pins are for, not just the watched ones.
+    static var showAllBranches: Bool {
+        get { AppGroup.defaults.bool(forKey: SharedKeys.showAllBranches) }
+        set { AppGroup.defaults.set(newValue, forKey: SharedKeys.showAllBranches) }
     }
 
     /// Hours an every-visit pin rests after surfacing.

@@ -125,6 +125,7 @@ jobs:
             shoot "$screen" "$screen"
           done
           shoot home-first-pin home -PinscapeFirstPin YES
+          shoot map-branches map -PinscapeAllBranches YES
           xcrun simctl ui "$UDID" appearance dark
           shoot home-dark home
           shoot pin-dark pin
