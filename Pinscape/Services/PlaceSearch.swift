@@ -51,7 +51,7 @@ final class PlaceSearch {
         for item in items where spec.accepts(resultName: item.name ?? "") {
             let candidate = RegionCandidate(
                 key: spec.key,
-                title: item.name ?? spec.query,
+                title: TextNormalizer.businessName(item.name ?? spec.query),
                 subtitle: Self.address(of: item),
                 center: GeoPoint(item.placemark.coordinate),
                 radius: PlaceTarget.storeRadius,

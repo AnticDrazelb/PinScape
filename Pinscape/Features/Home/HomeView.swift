@@ -259,7 +259,7 @@ struct HomeView: View {
                     let matching = engine.regions.filter { target.matches(regionKey: $0.candidate.key) }
                     let nearest = matching.min { distance($0) < distance($1) }
                     if let nearest {
-                        group.nearestTitle = [nearest.candidate.title, nearest.candidate.subtitle].compactMap { $0 }.joined(separator: ", ")
+                        group.nearestTitle = [TextNormalizer.businessName(nearest.candidate.title), nearest.candidate.subtitle].compactMap { $0 }.joined(separator: ", ")
                         if let here {
                             group.distance = max(0, here.distance(to: nearest.candidate.center) - nearest.candidate.radius)
                         }

@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var quietReason: String?
     @State private var testSent = false
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
+    @State private var calendarOn = CalendarScout.shared.isAuthorized
     @State private var confirmClear = false
 
     var body: some View {
@@ -29,20 +30,29 @@ struct SettingsView: View {
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
 
+                // Only what needs you. A working setup shows nothing here.
+                if !attention.isEmpty {
+                    Section {
+                        ForEach(attention) { item in
+                            attentionRow(item)
+                        }
+                    }
+                }
+
                 Section("Capture") {
-                    Toggle(isOn: $confirmationSound) {
-                        SettingLabel("Haptic & chime", detail: "Feel it land without looking", symbol: "bell.and.waves.left.and.right.fill", color: .teal)
-                    }
-                    Toggle(isOn: $voiceConfirmation) {
-                        SettingLabel("Speak confirmation", detail: "“Got it. Tesco, batteries.”", symbol: "speaker.wave.2.fill", color: .pink)
-                    }
-                    Toggle(isOn: $shakeToUndo) {
-                        SettingLabel("Shake to undo", detail: "Right after you drop a pin", symbol: "iphone.radiowaves.left.and.right", color: .orange)
-                    }
                     NavigationLink {
                         ShortcutsHelpView()
                     } label: {
-                        SettingLabel("Action Button, Siri & wake phrase", detail: "Capture without unlocking", symbol: "button.horizontal.top.press.fill", color: .indigo)
+                        SettingLabel("Action Button, Siri & wake phrase", symbol: "button.horizontal.top.press.fill", color: .indigo)
+                    }
+                    Toggle(isOn: $confirmationSound) {
+                        SettingLabel("Sound & haptic", symbol: "bell.and.waves.left.and.right.fill", color: .teal)
+                    }
+                    Toggle(isOn: $voiceConfirmation) {
+                        SettingLabel("Speak confirmation", symbol: "speaker.wave.2.fill", color: .pink)
+                    }
+                    Toggle(isOn: $shakeToUndo) {
+                        SettingLabel("Shake to undo", symbol: "iphone.radiowaves.left.and.right", color: .orange)
                     }
                 }
 
@@ -51,116 +61,63 @@ struct SettingsView: View {
                         Text("Pinscape chime").tag(true)
                         Text("Standard").tag(false)
                     } label: {
-                        SettingLabel("Arrival sound", detail: nil, symbol: "bell.and.waves.left.and.right.fill", color: .pink)
+                        SettingLabel("Sound", symbol: "bell.badge.fill", color: .red)
                     }
                     Button {
                         Task { await sendTestArrival() }
                     } label: {
-                        SettingLabel("Test arrival sound", detail: testSent ? "Coming in 5 seconds. Lock your iPhone to hear it." : "Hear what an arrival sounds like", symbol: "speaker.wave.2.fill", color: .pink)
+                        SettingLabel("Test sound", detail: testSent ? "Plays in 5 seconds. Lock your iPhone to hear it." : nil, symbol: "play.fill", color: .red)
                     }
                     .foregroundStyle(.primary)
-                    if let quietReason {
-                        Button(action: openNotificationSettings) {
-                            Label {
-                                Text(quietReason)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.primary)
-                            } icon: {
-                                Image(systemName: "speaker.slash.fill")
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                    }
                     Picker(selection: $restHours) {
                         Text("1 hour").tag(1.0)
                         Text("3 hours").tag(3.0)
                         Text("6 hours").tag(6.0)
                         Text("A day").tag(24.0)
                     } label: {
-                        SettingLabel("Every-visit pins rest", detail: nil, symbol: "moon.zzz.fill", color: .purple)
+                        SettingLabel("Every-visit rest", symbol: "moon.zzz.fill", color: .purple)
                     }
+                    Button {
+                        Task { await toggleCalendar() }
+                    } label: {
+                        LabeledContent {
+                            Text(calendarOn ? "On" : "Off")
+                        } label: {
+                            SettingLabel("Trip suggestions", symbol: "calendar", color: .teal)
+                        }
+                    }
+                    .foregroundStyle(.primary)
                 } header: {
-                    Text("Reminders")
+                    Text("Arrivals")
                 } footer: {
-                    Text("New pins remind you on your next visit, then wait in your list. Every-visit pins come back each time, resting in between so popping in and out doesn't nag. Arrivals stay silent when your iPhone is on silent or a Focus is on, unless Pinscape is allowed in that Focus (Settings › Focus).")
-                }
-
-                Section {
-                    PermissionRow(title: "Location", symbol: "location.fill", color: .blue, status: locationText, ok: engine.canSurfaceInBackground) {
-                        engine.requestAccess()
-                    }
-                    PermissionRow(title: "Notifications", symbol: "bell.badge.fill", color: .red, status: quietReason == nil ? notificationText : "\(notificationText), may be silent", ok: notificationStatus == .authorized && quietReason == nil) {
-                        Task {
-                            if notificationStatus == .notDetermined {
-                                await NotificationManager.requestAuthorization()
-                                await refreshNotifications()
-                            } else {
-                                openNotificationSettings()
-                            }
-                        }
-                    }
-                    PermissionRow(title: "Microphone & Speech", symbol: "mic.fill", color: .orange, status: SpeechCapture.isAuthorized ? "On, on-device" : "Off", ok: SpeechCapture.isAuthorized) {
-                        Task {
-                            if !SpeechCapture.hasBeenAsked {
-                                _ = await SpeechCapture.requestPermissions()
-                            } else {
-                                engine.openSettings()
-                            }
-                        }
-                    }
-                    PermissionRow(title: "Calendar trips", symbol: "calendar", color: .teal, status: CalendarScout.shared.isAuthorized ? "On" : "Off", ok: CalendarScout.shared.isAuthorized) {
-                        Task {
-                            if CalendarScout.shared.status == .notDetermined {
-                                _ = await CalendarScout.shared.requestAccess()
-                            } else {
-                                engine.openSettings()
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Permissions")
-                } footer: {
-                    Text(permissionsFooter)
-                }
-
-                if !AppGroup.isShared && !PinStore.isDemo {
-                    Section {
-                        SettingLabel("Widgets & Share Sheet are off", detail: "Your pins are saved in the app as normal", symbol: "square.stack.3d.up.slash.fill", color: .gray)
-                    } footer: {
-                        Text("This copy of Pinscape was installed without an App Group, so the widgets and Share Sheet can't reach your pins. Installing with AltStore or SideStore, or from TestFlight, turns them on, and your pins move across.")
+                    if let quietReason {
+                        Text(quietReason)
                     }
                 }
 
                 Section {
-                    PrivacyCard()
-                } header: {
-                    Text("Privacy")
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-
-                Section("Your data") {
+                    NavigationLink {
+                        PrivacyView()
+                    } label: {
+                        SettingLabel("Privacy", symbol: "hand.raised.fill", color: .blue)
+                    }
                     ShareLink(item: exportText, subject: Text("Pinscape pins")) {
-                        SettingLabel("Export to Notes", detail: "\(allPins.count) pins as text", symbol: "square.and.arrow.up", color: .yellow)
+                        SettingLabel("Export to Notes", symbol: "square.and.arrow.up", color: .yellow)
                     }
+                    .foregroundStyle(.primary)
                     Button(role: .destructive) {
                         confirmClear = true
                     } label: {
-                        SettingLabel("Clear completed pins", detail: nil, symbol: "trash.fill", color: .red)
+                        SettingLabel("Clear completed pins", symbol: "trash.fill", color: .gray)
                     }
                     .foregroundStyle(.primary)
-                }
-
-                Section {
-                    LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
-                    LabeledContent("Places armed", value: "\(engine.regions.count) of 20")
                     NavigationLink {
                         DiagnosticsView()
                     } label: {
-                        SettingLabel("Diagnostics", detail: "Why didn't a pin go off?", symbol: "stethoscope", color: .gray)
+                        SettingLabel("Diagnostics", symbol: "stethoscope", color: .gray)
                     }
                 } footer: {
-                    Text("Pinscape · Leave thoughts in the real world.")
+                    Text("Pinscape \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                         .frame(maxWidth: .infinity)
                         .padding(.top, 12)
                 }
@@ -189,6 +146,52 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: Needs attention
+
+    private enum Attention: String, Identifiable {
+        case location, notifications, notShared
+        var id: String { rawValue }
+    }
+
+    private var attention: [Attention] {
+        guard !PinStore.isDemo else { return [] }
+        var items: [Attention] = []
+        if !engine.canSurfaceInBackground { items.append(.location) }
+        if notificationStatus == .denied || notificationStatus == .notDetermined { items.append(.notifications) }
+        if !AppGroup.isShared { items.append(.notShared) }
+        return items
+    }
+
+    @ViewBuilder
+    private func attentionRow(_ item: Attention) -> some View {
+        switch item {
+        case .location:
+            let off = engine.authorization == .denied || engine.authorization == .restricted
+            Button {
+                engine.requestAccess()
+            } label: {
+                AttentionLabel(off ? "Location is off" : "Allow location “Always”", detail: off ? "Pinscape can't tell when you arrive." : "So pins find you with Pinscape closed.")
+            }
+        case .notifications:
+            Button {
+                Task {
+                    if notificationStatus == .notDetermined {
+                        await NotificationManager.requestAuthorization()
+                        await refreshNotifications()
+                    } else {
+                        openNotificationSettings()
+                    }
+                }
+            } label: {
+                AttentionLabel(notificationStatus == .denied ? "Notifications are off" : "Turn on notifications", detail: "So arrivals can reach you.")
+            }
+        case .notShared:
+            AttentionLabel("Widgets & Share Sheet are off", detail: "Reinstall with AltStore or SideStore to turn them on.")
+        }
+    }
+
+    // MARK: Actions
+
     private func refreshNotifications() async {
         if PinStore.isDemo {
             notificationStatus = .authorized
@@ -205,6 +208,15 @@ struct SettingsView: View {
         await NotificationManager.postTestArrival()
         testSent = true
         await refreshNotifications()
+    }
+
+    private func toggleCalendar() async {
+        if CalendarScout.shared.status == .notDetermined {
+            calendarOn = await CalendarScout.shared.requestAccess()
+        } else {
+            // Granted or refused in iOS Settings, which is the only place to change it.
+            engine.openSettings()
+        }
     }
 
     /// Pinscape's own page in Settings › Notifications.
@@ -225,10 +237,9 @@ struct SettingsView: View {
                 Text("Pinscape")
                     .font(.headline)
                     .foregroundStyle(.primary)
-                Text(appCardDetail)
+                Text(waitingText)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
             }
             Spacer(minLength: 0)
         }
@@ -237,38 +248,9 @@ struct SettingsView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var permissionsFooter: String {
-        switch engine.authorization {
-        case .authorizedAlways:
-            return "Pins can find you with Pinscape closed."
-        case .authorizedWhenInUse:
-            return "With “While Using”, pins only surface while Pinscape is open on screen. Choose “Always” so they find you when you arrive."
-        default:
-            return "Without location, Pinscape can't tell when you arrive anywhere."
-        }
-    }
-
-    private var appCardDetail: String {
+    private var waitingText: String {
         let waiting = allPins.filter { !$0.isCompleted }.count
-        let pins = waiting == 1 ? "1 pin waiting" : "\(waiting) pins waiting"
-        return "\(pins) · \(engine.regions.count) \(engine.regions.count == 1 ? "place" : "places") armed"
-    }
-
-    private var locationText: String {
-        switch engine.authorization {
-        case .authorizedAlways: "Always"
-        case .authorizedWhenInUse: "While using — tap for Always"
-        case .denied, .restricted: "Off"
-        default: "Not set"
-        }
-    }
-
-    private var notificationText: String {
-        switch notificationStatus {
-        case .authorized, .provisional, .ephemeral: "On"
-        case .denied: "Off"
-        default: "Not set"
-        }
+        return waiting == 1 ? "1 pin waiting" : "\(waiting) pins waiting"
     }
 
     private var exportText: String {
@@ -285,13 +267,54 @@ struct SettingsView: View {
     }
 }
 
+/// A row in Settings that needs you: an orange mark, what's wrong, and one short line on why.
+private struct AttentionLabel: View {
+    var title: String
+    var detail: String
+
+    init(_ title: String, detail: String) {
+        self.title = title
+        self.detail = detail
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark")
+                .font(.system(size: 14, weight: .heavy))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(Color.orange.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .foregroundStyle(.primary)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+/// The privacy details, one tap away rather than in the middle of Settings.
+struct PrivacyView: View {
+    var body: some View {
+        ScrollView {
+            PrivacyCard()
+                .padding(16)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Privacy")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 struct SettingLabel: View {
     var title: String
     var detail: String?
     var symbol: String
     var color: Color
 
-    init(_ title: String, detail: String?, symbol: String, color: Color) {
+    init(_ title: String, detail: String? = nil, symbol: String, color: Color) {
         self.title = title
         self.detail = detail
         self.symbol = symbol
@@ -315,27 +338,6 @@ struct SettingLabel: View {
                 }
             }
         }
-    }
-}
-
-private struct PermissionRow: View {
-    var title: String
-    var symbol: String
-    var color: Color
-    var status: String
-    var ok: Bool
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                SettingLabel(title, detail: status, symbol: symbol, color: color)
-                Spacer()
-                Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                    .foregroundStyle(ok ? .green : .orange)
-            }
-        }
-        .foregroundStyle(.primary)
     }
 }
 
@@ -468,13 +470,17 @@ struct DiagnosticsView: View {
 
     var body: some View {
         List {
-            Section("Now") {
+            Section {
                 LabeledContent("Pin store", value: storeText)
                 LabeledContent("Widgets & Share Sheet", value: AppGroup.isShared ? "Shared" : "Off (no App Group)")
                 LabeledContent("Location", value: locationText)
                 LabeledContent("Notifications", value: notificationText)
                 LabeledContent("Arrival sound", value: quiet == nil ? "On" : "May be silent")
-                LabeledContent("Places armed", value: "\(engine.regions.count) of 20")
+                LabeledContent("Shop locations watched", value: "\(engine.regions.count)")
+            } header: {
+                Text("Now")
+            } footer: {
+                Text("A pin for “any Boots” watches the nearest few Boots, swapped as you move. iOS lets an app watch 20 locations at once.")
             }
             Section {
                 if entries.isEmpty {

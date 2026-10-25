@@ -412,9 +412,22 @@ struct CaptureParser {
         while tokens.last?.norm == "please" {
             tokens.removeLast()
         }
+        // Speech recognition often hears "Buy paracetamol" as "By paracetamol". A note that starts
+        // with "by" and then names a thing, rather than a time or place, is a shopping item.
+        if tokens.count > 1, tokens[0].norm == "by", !notBuyFollowers.contains(tokens[1].norm), Int(tokens[1].norm) == nil {
+            tokens[0] = Token(original: "Buy", norm: "buy", endsClause: tokens[0].endsClause)
+        }
         note = join(tokens)
         return TextNormalizer.sentenceCase(note)
     }
+
+    /// Words after a leading "by" that mean "by" really was meant: "By Friday", "By the door".
+    private static let notBuyFollowers: Set<String> = [
+        "the", "my", "your", "his", "her", "their", "our", "this", "that", "next", "end", "then", "now",
+        "today", "tonight", "tomorrow", "noon", "midnight", "morning", "evening", "lunchtime", "bedtime",
+        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "weekend",
+        "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
+    ]
 
     static func dropLeading(_ prefixes: [[String]], from text: String) -> String {
         let tokens = TextNormalizer.tokens(text)

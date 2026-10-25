@@ -76,7 +76,7 @@ enum NotificationManager {
         case .authorized, .ephemeral:
             break
         case .provisional:
-            return "Pinscape's notifications are delivered quietly. Turn on Sounds and the Lock Screen for Pinscape."
+            return "Pinscape's notifications are set to deliver quietly."
         default:
             return "Notifications are off for Pinscape."
         }
@@ -87,9 +87,9 @@ enum NotificationManager {
         case .enabled:
             return nil
         case .notSupported:
-            return "This copy of Pinscape can't send Time Sensitive alerts, so a Focus silences arrivals unless Pinscape is one of its allowed apps."
+            return "A Focus will silence arrivals unless Pinscape is one of its allowed apps."
         default:
-            return "Time Sensitive alerts are off for Pinscape, so a Focus can silence arrivals."
+            return "A Focus can silence arrivals: Time Sensitive is off for Pinscape."
         }
     }
 

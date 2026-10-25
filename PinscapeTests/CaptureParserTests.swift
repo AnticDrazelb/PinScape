@@ -86,4 +86,13 @@ final class CaptureParserTests: XCTestCase {
         XCTAssertEqual(SurfacingPolicy.confirmation(place: "Tesco", note: "Batteries"), "Got it. Tesco, batteries.")
         XCTAssertEqual(SurfacingPolicy.confirmation(place: "B&Q", note: ""), "Got it. B&Q.")
     }
+
+    func testMisheardBuyIsCorrected() {
+        let parser = CaptureParser(savedPlaceNames: [])
+        XCTAssertEqual(parser.parse("By paracetamol at Boots").note, "Buy paracetamol")
+        XCTAssertEqual(parser.parse("Boots, by plasters").note, "Buy plasters")
+        XCTAssertEqual(CaptureParser.cleanNote("by Friday send the forms"), "By Friday send the forms")
+        XCTAssertEqual(CaptureParser.cleanNote("by the door, umbrella"), "By the door, umbrella")
+        XCTAssertEqual(CaptureParser.cleanNote("by 5 call the vet"), "By 5 call the vet")
+    }
 }

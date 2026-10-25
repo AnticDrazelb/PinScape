@@ -101,4 +101,12 @@ final class PlacesTests: XCTestCase {
         XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: false, createdAt: now.addingTimeInterval(-30), lastSurfacedAt: nil, snoozedUntil: nil, now: now))
         XCTAssertFalse(SurfacingPolicy.shouldSurface(isAmbient: false, isCompleted: false, createdAt: made, lastSurfacedAt: nil, snoozedUntil: now.addingTimeInterval(60), now: now))
     }
+
+    func testBusinessNamesReadNaturally() {
+        XCTAssertEqual(TextNormalizer.businessName("Boots Uk Limited - Birchwood Health Centre"), "Boots, Birchwood Health Centre")
+        XCTAssertEqual(TextNormalizer.businessName("Tesco Express"), "Tesco Express")
+        XCTAssertEqual(TextNormalizer.businessName("Primark"), "Primark")
+        XCTAssertEqual(TextNormalizer.businessName("Screwfix Ltd"), "Screwfix")
+        XCTAssertEqual(TextNormalizer.businessName("Limited"), "Limited", "a name that's only a suffix is left alone")
+    }
 }

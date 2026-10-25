@@ -87,6 +87,30 @@ enum TextNormalizer {
     }
 
     /// Words that look like a title: "Bristol", "Mum's House".
+    /// An Apple Maps business name as a person would say it:
+    /// "Boots Uk Limited - Birchwood Health Centre" → "Boots, Birchwood Health Centre".
+    static func businessName(_ name: String) -> String {
+        let parts = name.components(separatedBy: " - ")
+            .map { withoutCompanySuffix($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { !$0.isEmpty }
+        return parts.isEmpty ? name : parts.joined(separator: ", ")
+    }
+
+    private static let companySuffixes: [[String]] = [["uk", "limited"], ["uk", "ltd"], ["limited"], ["ltd"], ["ltd."], ["plc"]]
+
+    private static func withoutCompanySuffix(_ part: String) -> String {
+        var words = part.split(separator: " ").map(String.init)
+        var changed = true
+        while changed {
+            changed = false
+            for suffix in companySuffixes where words.count > suffix.count && words.suffix(suffix.count).map({ $0.lowercased() }) == suffix {
+                words.removeLast(suffix.count)
+                changed = true
+            }
+        }
+        return words.joined(separator: " ")
+    }
+
     static func titleCase(_ text: String) -> String {
         text.split(separator: " ").map { word in
             guard let first = word.first, first.isLowercase else { return String(word) }
