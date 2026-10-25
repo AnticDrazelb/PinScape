@@ -244,7 +244,13 @@ struct PinMapView: View {
 
     private func loadBranches() async {
         guard let here = engine.location ?? PinscapeSettings.lastKnownPoint.map({ CLLocation(latitude: $0.latitude, longitude: $0.longitude) }) else { return }
+        let started = ContinuousClock.now
         await allBranches.load(searchSpecs, around: here)
+        // A map that has only just appeared is still settling on your location, which would
+        // override the zoom; give it a moment if the branches came straight from the cache.
+        if ContinuousClock.now - started < .milliseconds(800) {
+            try? await Task.sleep(for: .milliseconds(800))
+        }
         fitBranches(around: here.coordinate)
     }
 
