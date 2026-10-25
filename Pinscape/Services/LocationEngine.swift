@@ -64,7 +64,8 @@ final class LocationEngine: NSObject {
         }
         Task {
             await self.startMonitor()
-            if AppGroup.defaults.bool(forKey: SharedKeys.needsReplan) || self.regions.isEmpty {
+            let outdated = AppGroup.defaults.integer(forKey: SharedKeys.planRulesVersion) != GeofencePlanner.rulesVersion
+            if AppGroup.defaults.bool(forKey: SharedKeys.needsReplan) || self.regions.isEmpty || outdated {
                 self.scheduleReplan(after: .milliseconds(200))
             } else {
                 await self.reconcile()
@@ -218,6 +219,7 @@ final class LocationEngine: NSObject {
             lastPlannedLocation = here
         }
         AppGroup.defaults.set(!result.isComplete, forKey: SharedKeys.needsReplan)
+        AppGroup.defaults.set(GeofencePlanner.rulesVersion, forKey: SharedKeys.planRulesVersion)
         if result.isComplete {
             Diagnostics.record(.planApplied, "\(result.plan.regions.count) regions")
         } else {

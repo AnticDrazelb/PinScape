@@ -82,13 +82,12 @@ final class PlanRecoveryTests: XCTestCase {
     }
 
     func testNoLocationFixStaysWithinTheRegionLimit() {
-        let many = (0..<30).map { branch(tescoKey, "Tesco \($0)", Double($0) * 0.002) }
-        let before = GeofencePlanner.replan(inputs: tescoInputs, lookups: [tescoKey: BranchLookup(results: many, isFresh: true)], previous: [], around: kingsCross)
+        let spots = (0..<30).map { pin(.spot(name: "Spot \($0)", center: GeoPoint(latitude: kingsCross.latitude + Double($0) * 0.002, longitude: kingsCross.longitude))) }
+        let before = GeofencePlanner.replan(inputs: GeofencePlanner.inputs(for: spots), lookups: [:], previous: [], around: kingsCross)
         XCTAssertEqual(before.plan.all.count, GeofencePlanner.regionLimit)
 
-        let spots = (0..<4).map { pin(.spot(name: "Spot \($0)", center: GeoPoint(latitude: 51.6 + Double($0) * 0.01, longitude: -0.2))) }
-        let inputs = GeofencePlanner.inputs(for: [pin(brand("Tesco"))] + spots)
-        let noFix = GeofencePlanner.replan(inputs: inputs, lookups: [:], previous: before.plan.all, around: nil)
+        let more = (0..<4).map { pin(.spot(name: "New \($0)", center: GeoPoint(latitude: 51.6 + Double($0) * 0.01, longitude: -0.2))) }
+        let noFix = GeofencePlanner.replan(inputs: GeofencePlanner.inputs(for: spots + more), lookups: [:], previous: before.plan.all, around: nil)
         XCTAssertEqual(noFix.plan.all.count, GeofencePlanner.regionLimit)
         XCTAssertEqual(ids(noFix), ids(before), "the places already watched keep their slots until there's a fix to rank by")
     }

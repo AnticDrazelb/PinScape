@@ -27,7 +27,7 @@ final class PlaceSearch {
     private static let staleReuseAge: TimeInterval = 3 * 24 * 60 * 60
 
     /// The closest branches of a chain, or places of a kind, around a location.
-    func branches(for spec: PlaceSearchSpec, near location: CLLocation, radius: CLLocationDistance = 8_000, limit: Int = 8) async -> BranchLookup {
+    func branches(for spec: PlaceSearchSpec, near location: CLLocation, radius: CLLocationDistance = 16_000, limit: Int = 8) async -> BranchLookup {
         let here = GeoPoint(location.coordinate)
         if let entry = cache[spec.key], entry.center.distance(to: here) < 1_500, Date().timeIntervalSince(entry.date) < 12 * 60 * 60 {
             return BranchLookup(results: entry.results, isFresh: true)

@@ -33,19 +33,32 @@ struct GeofencePlan: Sendable {
 }
 
 /// iOS watches at most 20 regions per app, but "any Tesco" can mean hundreds of shops.
-/// The planner keeps the closest places watched and draws a boundary around you;
-/// crossing it wakes Pinscape to swap in the next nearest set.
+/// The planner watches only what you could reach before the next re-plan, and draws a boundary
+/// around you; crossing it wakes Pinscape to swap in what's nearest then.
 enum GeofencePlanner {
     static let regionLimit = 20
     static let minimumRadius = 100.0
     static let maximumRadius = 25_000.0
     static let boundaryID = "pinscape.boundary"
+    /// Bumped when the planning rules change, so an existing plan is redone with the new ones.
+    static let rulesVersion = 2
+    /// Branches of one chain or kind of place watched at once, at most.
+    static let branchesPerPlace = 5
+    /// How far past the boundary a branch is still worth watching: leaving the boundary takes iOS
+    /// a moment to notice and the re-plan a moment to search, and you keep moving meanwhile.
+    static let reachMargin = 1_500.0
 
     /// - Parameters:
     ///   - candidates: every place a pin could surface at, in priority order.
     ///   - user: where you are now, if known.
     ///   - refreshDistance: how far you can travel before dynamic places (brands, categories) need searching again.
-    static func plan(candidates: [RegionCandidate], around user: GeoPoint?, limit: Int = regionLimit, refreshDistance: Double? = nil) -> GeofencePlan {
+    ///
+    /// The nearest branch of every place is always watched, however far away, so every pin is
+    /// armed. Further branches are watched only within reach before the next re-plan
+    /// (`refreshDistance` plus `reachMargin`), at most `branchesPerPlace` each. Anything left out
+    /// is outside the boundary, so you can't walk into a place that isn't watched without
+    /// Pinscape re-planning first.
+    static func plan(candidates: [RegionCandidate], around user: GeoPoint?, limit: Int = regionLimit, refreshDistance: Double? = nil, branchesPerPlace: Int = branchesPerPlace) -> GeofencePlan {
         let unique = deduplicate(candidates.map(clamped))
 
         guard let user else {
@@ -59,11 +72,34 @@ enum GeofencePlanner {
                 if lhs.distance == rhs.distance { return lhs.candidate.key < rhs.candidate.key }
                 return lhs.distance < rhs.distance
             }
+        let reach = refreshDistance.map { $0 + reachMargin }
 
-        let needsBoundary = ranked.count > limit || refreshDistance != nil
-        let capacity = needsBoundary ? limit - 1 : limit
+        func select(capacity: Int) -> (chosen: [(candidate: RegionCandidate, distance: Double)], firstLeftOut: Double?) {
+            var chosen: [(candidate: RegionCandidate, distance: Double)] = []
+            var firstLeftOut: Double?
+            var perPlace: [String: Int] = [:]
+            for entry in ranked {
+                let count = perPlace[entry.candidate.key, default: 0]
+                let worthWatching = count == 0 || (count < branchesPerPlace && reach.map { entry.distance <= $0 } ?? true)
+                if worthWatching, chosen.count < capacity {
+                    chosen.append(entry)
+                    perPlace[entry.candidate.key] = count + 1
+                } else if firstLeftOut == nil {
+                    firstLeftOut = entry.distance
+                }
+            }
+            return (chosen, firstLeftOut)
+        }
 
-        let regions: [PlannedRegion] = ranked.prefix(capacity).map { entry in
+        // A boundary takes one of the 20 slots. It's needed to refresh dynamic places, or when
+        // anything had to be left out.
+        var selection = select(capacity: refreshDistance == nil ? limit : limit - 1)
+        let needsBoundary = refreshDistance != nil || selection.firstLeftOut != nil
+        if needsBoundary, refreshDistance == nil {
+            selection = select(capacity: limit - 1)
+        }
+
+        let regions: [PlannedRegion] = selection.chosen.map { entry in
             let inside = user.distance(to: entry.candidate.center) <= entry.candidate.radius
             return PlannedRegion(id: regionID(for: entry.candidate), candidate: entry.candidate, startsInside: inside)
         }
@@ -71,9 +107,9 @@ enum GeofencePlanner {
         var boundary: PlannedRegion?
         if needsBoundary {
             var radius = refreshDistance ?? maximumRadius
-            if ranked.count > capacity {
-                // Re-plan before reaching the nearest place that didn't make the cut.
-                radius = min(radius, ranked[capacity].distance)
+            if let firstLeftOut = selection.firstLeftOut {
+                // Re-plan before reaching the nearest place that isn't watched.
+                radius = min(radius, firstLeftOut)
             }
             radius = min(max(radius, 250), maximumRadius)
             let candidate = RegionCandidate(key: boundaryID, title: "Boundary", subtitle: nil, center: user, radius: radius, symbol: "location", colorHex: "#8E8E93")

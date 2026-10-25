@@ -56,7 +56,7 @@ any pharmacy: hay fever tablets          → Any pharmacy · "Hay fever tablets"
 Then `PlaceResolver` turns the phrase into a `PlaceTarget`: a chain (any branch), a kind of place, one of your saved places, a spot, an area, a place group or an NFC sticker.
 
 ### Surfacing: getting around the 20-region limit
-iOS only lets an app watch 20 regions, but "any Tesco" can mean hundreds of shops. `GeofencePlanner` keeps the **19 nearest** candidate places watched and draws a **boundary circle** around you. Leaving the boundary wakes Pinscape, which searches Apple Maps for the nearest branches again and swaps them in. Significant location changes act as a backstop.
+iOS only lets an app watch 20 regions, but "any Tesco" can mean hundreds of shops. `GeofencePlanner` watches only what you could reach before the next re-plan: the **nearest branch of every chain** (however far, so every pin is armed), plus other branches within about 3 miles, at most 5 per chain. It draws a **boundary circle** around you that stops short of anything left out. Leaving the boundary wakes Pinscape, which searches Apple Maps (up to 10 miles out) for the nearest branches again and swaps them in. Significant location changes act as a backstop.
 
 A temporary failure never disarms a reminder that was working. If an Apple Maps search fails, that chain keeps the branches it was already watching. Without a location fix, nothing already watched is touched, and if the pins can't be read the plan isn't changed at all. Pinscape then tries again a few minutes later.
 

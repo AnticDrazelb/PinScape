@@ -82,6 +82,7 @@ enum AppGroup {
 
 enum SharedKeys {
     static let needsReplan = "needsReplan"
+    static let planRulesVersion = "planRulesVersion"
     static let pendingRoute = "pendingRoute"
     static let plannedRegions = "plannedRegions"
     static let currentVisits = "currentVisits"
