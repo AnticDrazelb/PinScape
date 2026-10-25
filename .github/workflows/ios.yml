@@ -38,30 +38,23 @@ jobs:
           xcodebuild -version
           xcrun simctl list runtimes | grep iOS
 
-      # The newest runtime for everything, plus one older than iOS 26.4 for the StoreKit tests:
-      # SKTestSession serves no products on the 26.4 and 26.5 simulators.
-      - name: Pick simulators
+      - name: Pick simulator
         run: |
-          python3 - <<'PY'
-          import json, os, subprocess
-          simctl = lambda *args: json.loads(subprocess.check_output(["xcrun", "simctl", "list", *args, "available", "-j"]))
-          devices = simctl("devices")["devices"]
-          version = lambda runtime: [int(p) for p in runtime.split("iOS-")[1].split("-")]
-          runtimes = sorted((r["identifier"] for r in simctl("runtimes")["runtimes"] if "iOS-" in r["identifier"]), key=version)
-          def device_on(runtime):
-              return next((d["udid"] for d in devices.get(runtime, []) if d["name"] == os.environ["DEVICE"]), None)
-          latest = next(u for r in reversed(runtimes) if (u := device_on(r)))
-          storekit_runtime = next(r for r in reversed(runtimes) if version(r) < [26, 4])
-          storekit = device_on(storekit_runtime) or subprocess.check_output(
-              ["xcrun", "simctl", "create", "StoreKit " + os.environ["DEVICE"], os.environ["DEVICE"], storekit_runtime], text=True).strip()
-          with open(os.environ["GITHUB_ENV"], "a") as env:
-              env.write(f"UDID={latest}\nSTOREKIT_UDID={storekit}\n")
-          print(f"{os.environ['DEVICE']}: {latest}; StoreKit tests on {storekit_runtime}: {storekit}")
-          PY
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, os, sys
+          data = json.load(sys.stdin)["devices"]
+          runtimes = sorted((k for k in data if "iOS" in k), key=lambda k: [int(p) for p in k.split("iOS-")[1].split("-")])
+          for runtime in reversed(runtimes):
+              for device in data[runtime]:
+                  if device["name"] == os.environ["DEVICE"]:
+                      print(device["udid"]); sys.exit(0)
+          sys.exit(1)')
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          echo "Using $DEVICE ($UDID)"
 
       # xcodebuild's own exit status decides each step (pipefail through tee); -quiet keeps the log to
-      # warnings and errors, and the full logs are uploaded if anything fails. A test that hangs
-      # (StoreKit purchases have been known to) fails after a couple of minutes instead of the job timing out.
+      # warnings and errors, and the full logs are uploaded if anything fails. A test that hangs fails
+      # after a couple of minutes instead of the job timing out.
       - name: Build app
         run: |
           set -o pipefail
@@ -75,7 +68,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build.log
 
-      - name: Unit tests (core logic, persistence, capture)
+      - name: Unit tests (core logic, persistence, arrivals, capture)
         run: |
           set -o pipefail
           xcodebuild test \
@@ -84,37 +77,19 @@ jobs:
             -destination "id=$UDID" \
             -derivedDataPath build \
             -resultBundlePath TestResults.xcresult \
-            -skip-testing:PinscapeAppTests/StoreKitTests \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 120 \
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee test.log
 
-      - name: StoreKit tests (purchases, lapses, refunds, Ask to Buy)
-        run: |
-          set -o pipefail
-          xcodebuild test \
-            -project Pinscape.xcodeproj \
-            -scheme Pinscape \
-            -destination "id=$STOREKIT_UDID" \
-            -derivedDataPath build \
-            -resultBundlePath StoreKitResults.xcresult \
-            -only-testing:PinscapeAppTests/StoreKitTests \
-            -test-timeouts-enabled YES \
-            -default-test-execution-time-allowance 120 \
-            -quiet \
-            CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tee storekit.log
-          xcrun xcresulttool get test-results summary --path StoreKitResults.xcresult | python3 scripts/test_failures.py --require-no-skips
-
       - name: Summarise failures
         if: failure()
         run: |
-          grep -hE "error:|failed" build.log test.log storekit.log 2>/dev/null | sort -u | head -150 || true
-          for results in TestResults.xcresult StoreKitResults.xcresult; do
-            [ -d "$results" ] && xcrun xcresulttool get test-results summary --path "$results" | python3 scripts/test_failures.py || true
-          done
+          grep -hE "error:|failed" build.log test.log 2>/dev/null | sort -u | head -150 || true
+          if [ -d TestResults.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path TestResults.xcresult | python3 scripts/test_failures.py
+          fi
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -123,9 +98,7 @@ jobs:
           path: |
             build.log
             test.log
-            storekit.log
             TestResults.xcresult
-            StoreKitResults.xcresult
           if-no-files-found: ignore
 
       - name: Screenshots
@@ -151,7 +124,6 @@ jobs:
           for screen in home capture capture-empty pin places here map settings onboarding; do
             shoot "$screen" "$screen"
           done
-          shoot paywall paywall -PinscapeFree YES
           shoot home-first-pin home -PinscapeFirstPin YES
           xcrun simctl ui "$UDID" appearance dark
           shoot home-dark home

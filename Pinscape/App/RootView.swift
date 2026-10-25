@@ -29,8 +29,6 @@ struct RootView: View {
                     PlacesView()
                 case .settings:
                     SettingsView()
-                case .paywall(let reason):
-                    PaywallView(reason: reason)
                 case .hereNow:
                     HereNowView()
                 case .sticker(let id):

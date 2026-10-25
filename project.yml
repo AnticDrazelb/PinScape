@@ -39,10 +39,6 @@ targets:
     platform: iOS
     sources:
       - path: Pinscape
-        excludes:
-          - "Resources/*.storekit"
-      - path: Pinscape/Resources/Pinscape.storekit
-        buildPhase: none
       - path: Shared
     settings:
       base:
@@ -102,14 +98,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(PINSCAPE_BUNDLE_ID).tests
         GENERATE_INFOPLIST_FILE: YES
 
-  # Tests that run inside the app: StoreKit purchases, the on-disk store, capture resolution.
+  # Tests that run inside the app: the on-disk store, arrivals, capture resolution.
   PinscapeAppTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: PinscapeAppTests
-      - path: Pinscape/Resources/Pinscape.storekit
-        buildPhase: resources
     dependencies:
       - target: Pinscape
     settings:
@@ -126,7 +120,6 @@ schemes:
         PinscapeAppTests: [test]
     run:
       config: Debug
-      storeKitConfiguration: Pinscape/Resources/Pinscape.storekit
     test:
       config: Debug
       gatherCoverageData: true

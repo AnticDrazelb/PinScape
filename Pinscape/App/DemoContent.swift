@@ -3,7 +3,7 @@ import Foundation
 import SwiftData
 
 /// Sample pins for screenshots and previews. Launch with `-PinscapeDemo YES`;
-/// add `-PinscapeScreen capture|places|settings|paywall|onboarding|pin|here|map` to open a screen.
+/// add `-PinscapeScreen capture|places|settings|onboarding|pin|here|map` to open a screen.
 @MainActor
 enum DemoContent {
     static let kingsCross = GeoPoint(latitude: 51.5316, longitude: -0.1236)
@@ -116,8 +116,6 @@ enum DemoContent {
             model.sheet = .places
         case "settings":
             model.sheet = .settings
-        case "paywall":
-            model.sheet = .paywall(.upgrade)
         case "onboarding":
             model.showOnboarding = true
         case "here":

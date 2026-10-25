@@ -20,22 +20,6 @@ struct UndoToast: Identifiable, Equatable {
     var createdAt = Date()
 }
 
-enum PaywallReason: String, Identifiable {
-    case pinLimit, placeLimit, groups, stickers, export, upgrade
-    var id: String { rawValue }
-
-    var headline: String {
-        switch self {
-        case .pinLimit: "You've filled your \(PinscapePlan.freeActivePins) free pins"
-        case .placeLimit: "Save every place that matters"
-        case .groups: "Group places together"
-        case .stickers: "Pins for the pantry door"
-        case .export: "Take your pins anywhere"
-        case .upgrade: "Your memory, location-aware"
-        }
-    }
-}
-
 /// App-wide navigation and transient state.
 @MainActor
 @Observable
@@ -44,7 +28,6 @@ final class AppModel {
         case pin(UUID)
         case places
         case settings
-        case paywall(PaywallReason)
         case hereNow
         case sticker(UUID)
         case map
@@ -55,7 +38,6 @@ final class AppModel {
             case .pin(let id): "pin-\(id)"
             case .places: "places"
             case .settings: "settings"
-            case .paywall(let reason): "paywall-\(reason.rawValue)"
             case .hereNow: "here"
             case .sticker(let id): "sticker-\(id)"
             case .map: "map"
@@ -88,10 +70,6 @@ final class AppModel {
     func startCapture(text: String = "", place: PlaceTarget? = nil, listen: Bool = true, source: PinSource = .app) {
         guard PinStore.isWritable else {
             storeAlert = PersistenceError.storeUnavailable.localizedDescription
-            return
-        }
-        guard PinActions.canAddPin else {
-            sheet = .paywall(.pinLimit)
             return
         }
         sheet = nil
@@ -137,8 +115,6 @@ final class AppModel {
             sheet = .hereNow
         case "places":
             sheet = .places
-        case "paywall":
-            sheet = .paywall(.upgrade)
         default:
             break
         }

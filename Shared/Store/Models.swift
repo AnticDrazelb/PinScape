@@ -64,9 +64,9 @@ final class Pin {
 enum SavedPlaceKind: String, Codable, Sendable {
     /// A spot on the map: home, gym, Mum's.
     case place
-    /// Several chains under one name (Pro).
+    /// Several chains under one name.
     case group
-    /// An NFC sticker (Pro or Sticker Pack).
+    /// An NFC sticker.
     case sticker
 }
 

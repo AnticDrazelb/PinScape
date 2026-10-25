@@ -1,16 +1,19 @@
 import AppIntents
 import Foundation
 
-/// "Hey Siri, leave a thought with Pinscape" → "What's the thought?" → "Where?"
+/// "Hey Siri, pin a thought in Pinscape" → "What should I pin?" → "Batteries at Tesco" →
+/// "Got it. Tesco, batteries." One answer carries both the thought and the place, as in the app;
+/// Siri only asks "Where?" if the answer didn't name one. Also what a Vocal Shortcut runs, for a
+/// wake phrase of your own without "Hey Siri".
 struct QuickPinIntent: AppIntent {
     static let title: LocalizedStringResource = "Pin a Thought"
-    static let description = IntentDescription("Leave a thought at a place. Pinscape surfaces it when you arrive.")
+    static let description = IntentDescription("Leave a thought at a place, like “batteries at Tesco”. Pinscape surfaces it when you arrive.")
 
-    @Parameter(title: "Thought", requestValueDialog: "What's the thought?")
+    @Parameter(title: "Thought", requestValueDialog: "What should I pin?")
     var note: String
 
     @Parameter(title: "Place", requestValueDialog: "Where should it find you?")
-    var place: String
+    var place: String?
 
     static var parameterSummary: some ParameterSummary {
         Summary("Pin \(\.$note) at \(\.$place)")
@@ -20,15 +23,23 @@ struct QuickPinIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard PinActions.canAddPin else {
-            let answer = "You've used all \(PinscapePlan.freeActivePins) free pins. Open Pinscape to go Pro or tick some off."
-            return .result(dialog: "\(answer)")
-        }
         let places = PinActions.savedPlaces()
         let parser = CaptureParser(savedPlaceNames: places.map(\.name))
-        let phrase = parser.classify(place) ?? PlacePhrase(text: TextNormalizer.titleCase(place), spoken: place, match: .freeform, isNear: false)
 
-        let text = CaptureParser.cleanNote(note)
+        let phrase: PlacePhrase
+        let text: String
+        if let place = place?.trimmingCharacters(in: .whitespacesAndNewlines), !place.isEmpty {
+            phrase = parser.classify(place) ?? PlacePhrase(text: TextNormalizer.titleCase(place), spoken: place, match: .freeform, isNear: false)
+            text = CaptureParser.cleanNote(note)
+        } else {
+            // "Batteries at Tesco" names the place itself; "batteries" alone gets asked where.
+            let parsed = parser.parse(note)
+            guard let found = parsed.place, !parsed.note.isEmpty else {
+                throw $place.needsValueError("Where should it find you?")
+            }
+            phrase = found
+            text = parsed.note
+        }
         let target: PlaceTarget
         switch await PlaceResolver.resolve(phrase, savedPlaces: places) {
         case .resolved(let resolved):
@@ -139,8 +150,11 @@ struct PinscapeShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: QuickPinIntent(),
             phrases: [
-                "Leave a thought with \(.applicationName)",
                 "Pin a thought in \(.applicationName)",
+                "Leave a thought with \(.applicationName)",
+                "\(.applicationName) a thought",
+                "Remind me with \(.applicationName)",
+                "Add to \(.applicationName)",
             ],
             shortTitle: "Pin a Thought",
             systemImageName: "text.bubble.fill"

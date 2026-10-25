@@ -13,7 +13,6 @@ struct PinscapeApp: App {
             RootView()
                 .environment(AppModel.shared)
                 .environment(LocationEngine.shared)
-                .environment(ProStore.shared)
                 .tint(Theme.accent)
                 .onOpenURL { AppModel.shared.open($0) }
         }
@@ -27,7 +26,6 @@ struct PinscapeApp: App {
             }
             Task {
                 await ArrivalCoordinator.retryPending()
-                await ProStore.shared.refreshEntitlements()
                 await LiveActivityController.resumeForCurrentVisits()
                 await CalendarScout.shared.refresh()
             }
@@ -57,7 +55,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         // Starts geofence monitoring. When iOS relaunches Pinscape in the background
         // because you arrived somewhere, this is what receives the event.
         LocationEngine.shared.start()
-        ProStore.shared.start()
         return true
     }
 

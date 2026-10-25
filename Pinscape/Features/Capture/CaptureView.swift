@@ -103,9 +103,6 @@ struct CaptureView: View {
                 dismiss()
             }
         }
-        .onChange(of: model.hitPinLimit) { _, hit in
-            if hit { showPaywall() }
-        }
         .onChange(of: typing) { _, isTyping in
             if isTyping {
                 model.speech.cancel()
@@ -248,17 +245,7 @@ struct CaptureView: View {
             return
         }
         typing = false
-        if model.save() == .needsPro {
-            showPaywall()
-        }
-    }
-
-    private func showPaywall() {
-        dismiss()
-        Task {
-            try? await Task.sleep(for: .milliseconds(400))
-            app.sheet = .paywall(.pinLimit)
-        }
+        model.save()
     }
 }
 

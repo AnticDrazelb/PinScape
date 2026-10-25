@@ -2,27 +2,29 @@ import CoreLocation
 import EventKit
 import SwiftData
 import SwiftUI
+import UIKit
 import UserNotifications
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(LocationEngine.self) private var engine
-    @Environment(ProStore.self) private var store
     @Query(sort: \Pin.createdAt, order: .reverse) private var allPins: [Pin]
 
     @State private var voiceConfirmation = PinscapeSettings.voiceConfirmation
     @State private var shakeToUndo = PinscapeSettings.shakeToUndo
     @State private var confirmationSound = PinscapeSettings.confirmationSound
     @State private var restHours = PinscapeSettings.everyVisitRestHours
+    @State private var arrivalChime = PinscapeSettings.arrivalChime
+    @State private var quietReason: String?
+    @State private var testSent = false
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
-    @State private var paywall: PaywallReason?
     @State private var confirmClear = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    proCard
+                    appCard
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -40,11 +42,35 @@ struct SettingsView: View {
                     NavigationLink {
                         ShortcutsHelpView()
                     } label: {
-                        SettingLabel("Action Button & Back Tap", detail: "Capture without unlocking", symbol: "button.horizontal.top.press.fill", color: .indigo)
+                        SettingLabel("Action Button, Siri & wake phrase", detail: "Capture without unlocking", symbol: "button.horizontal.top.press.fill", color: .indigo)
                     }
                 }
 
                 Section {
+                    Picker(selection: $arrivalChime) {
+                        Text("Pinscape chime").tag(true)
+                        Text("Standard").tag(false)
+                    } label: {
+                        SettingLabel("Arrival sound", detail: nil, symbol: "bell.and.waves.left.and.right.fill", color: .pink)
+                    }
+                    Button {
+                        Task { await sendTestArrival() }
+                    } label: {
+                        SettingLabel("Test arrival sound", detail: testSent ? "Coming in 5 seconds. Lock your iPhone to hear it." : "Hear what an arrival sounds like", symbol: "speaker.wave.2.fill", color: .pink)
+                    }
+                    .foregroundStyle(.primary)
+                    if let quietReason {
+                        Button(action: openNotificationSettings) {
+                            Label {
+                                Text(quietReason)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.primary)
+                            } icon: {
+                                Image(systemName: "speaker.slash.fill")
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
                     Picker(selection: $restHours) {
                         Text("1 hour").tag(1.0)
                         Text("3 hours").tag(3.0)
@@ -56,20 +82,20 @@ struct SettingsView: View {
                 } header: {
                     Text("Reminders")
                 } footer: {
-                    Text("New pins remind you on your next visit, then wait in your list. Every-visit pins come back each time, resting in between so popping in and out doesn't nag.")
+                    Text("New pins remind you on your next visit, then wait in your list. Every-visit pins come back each time, resting in between so popping in and out doesn't nag. Arrivals stay silent when your iPhone is on silent or a Focus is on, unless Pinscape is allowed in that Focus (Settings › Focus).")
                 }
 
                 Section {
                     PermissionRow(title: "Location", symbol: "location.fill", color: .blue, status: locationText, ok: engine.canSurfaceInBackground) {
                         engine.requestAccess()
                     }
-                    PermissionRow(title: "Notifications", symbol: "bell.badge.fill", color: .red, status: notificationText, ok: notificationStatus == .authorized) {
+                    PermissionRow(title: "Notifications", symbol: "bell.badge.fill", color: .red, status: quietReason == nil ? notificationText : "\(notificationText), may be silent", ok: notificationStatus == .authorized && quietReason == nil) {
                         Task {
                             if notificationStatus == .notDetermined {
                                 await NotificationManager.requestAuthorization()
-                                notificationStatus = await NotificationManager.authorizationStatus()
+                                await refreshNotifications()
                             } else {
-                                engine.openSettings()
+                                openNotificationSettings()
                             }
                         }
                     }
@@ -114,21 +140,8 @@ struct SettingsView: View {
                 .listRowBackground(Color.clear)
 
                 Section("Your data") {
-                    if store.isPro {
-                        ShareLink(item: exportText, subject: Text("Pinscape pins")) {
-                            SettingLabel("Export to Notes", detail: "\(allPins.count) pins as text", symbol: "square.and.arrow.up", color: .yellow)
-                        }
-                    } else {
-                        Button {
-                            paywall = .export
-                        } label: {
-                            HStack {
-                                SettingLabel("Export to Notes", detail: "Every pin as tidy text", symbol: "square.and.arrow.up", color: .yellow)
-                                Spacer()
-                                ProBadge()
-                            }
-                        }
-                        .foregroundStyle(.primary)
+                    ShareLink(item: exportText, subject: Text("Pinscape pins")) {
+                        SettingLabel("Export to Notes", detail: "\(allPins.count) pins as text", symbol: "square.and.arrow.up", color: .yellow)
                     }
                     Button(role: .destructive) {
                         confirmClear = true
@@ -160,9 +173,6 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .sheet(item: $paywall) { reason in
-                PaywallView(reason: reason)
-            }
             .confirmationDialog("Clear all completed pins?", isPresented: $confirmClear, titleVisibility: .visible) {
                 Button("Clear", role: .destructive) {
                     for pin in allPins where pin.isCompleted {
@@ -174,46 +184,57 @@ struct SettingsView: View {
             .onChange(of: shakeToUndo) { _, value in PinscapeSettings.shakeToUndo = value }
             .onChange(of: confirmationSound) { _, value in PinscapeSettings.confirmationSound = value }
             .onChange(of: restHours) { _, value in PinscapeSettings.everyVisitRestHours = value }
-            .task {
-                if PinStore.isDemo {
-                    notificationStatus = .authorized
-                } else {
-                    notificationStatus = await NotificationManager.authorizationStatus()
-                }
-            }
+            .onChange(of: arrivalChime) { _, value in PinscapeSettings.arrivalChime = value }
+            .task { await refreshNotifications() }
         }
     }
 
-    private var proCard: some View {
-        Button {
-            if !store.isPro { paywall = .upgrade }
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "mappin.and.ellipse")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(Theme.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.isPro ? "Pinscape Pro" : "Upgrade to Pro")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text(proCardDetail)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 0)
-                if !store.isPro {
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.bold))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .padding(16)
-            .cardBackground()
+    private func refreshNotifications() async {
+        if PinStore.isDemo {
+            notificationStatus = .authorized
+            return
         }
-        .buttonStyle(.plain)
+        notificationStatus = await NotificationManager.authorizationStatus()
+        quietReason = await NotificationManager.quietReason()
+    }
+
+    private func sendTestArrival() async {
+        if notificationStatus == .notDetermined {
+            await NotificationManager.requestAuthorization()
+        }
+        await NotificationManager.postTestArrival()
+        testSent = true
+        await refreshNotifications()
+    }
+
+    /// Pinscape's own page in Settings › Notifications.
+    private func openNotificationSettings() {
+        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    private var appCard: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "mappin.and.ellipse")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 52, height: 52)
+                .background(Theme.gradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Pinscape")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(appCardDetail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .cardBackground()
+        .accessibilityElement(children: .combine)
     }
 
     private var permissionsFooter: String {
@@ -227,10 +248,10 @@ struct SettingsView: View {
         }
     }
 
-    private var proCardDetail: String {
-        if store.isPro { return "Unlimited pins, groups and stickers. Thank you." }
-        let price = store.monthly?.displayPrice ?? "£2.99"
-        return "Unlimited pins, place groups, NFC stickers, export. From \(price) a month."
+    private var appCardDetail: String {
+        let waiting = allPins.filter { !$0.isCompleted }.count
+        let pins = waiting == 1 ? "1 pin waiting" : "\(waiting) pins waiting"
+        return "\(pins) · \(engine.regions.count) \(engine.regions.count == 1 ? "place" : "places") armed"
     }
 
     private var locationText: String {
@@ -394,8 +415,15 @@ struct ShortcutsHelpView: View {
                 "It spots shops like Currys or IKEA and suggests the place.",
             ])
             HelpStep(symbol: "mic.fill", color: .pink, title: "Siri", steps: [
-                "Say “Leave a thought with Pinscape”.",
-                "Or “What's pinned here in Pinscape?” when you arrive.",
+                "Say “Hey Siri, pin a thought in Pinscape”.",
+                "Siri asks “What should I pin?”. Say what and where in one go: “Batteries at Tesco”.",
+                "When you arrive somewhere: “What's pinned here in Pinscape?”",
+            ])
+            HelpStep(symbol: "waveform.badge.mic", color: .purple, title: "Your own wake phrase", steps: [
+                "Open Settings › Accessibility › Vocal Shortcuts and tap Set Up Vocal Shortcut.",
+                "Choose Siri Request and type “Pin a thought in Pinscape”, or pick the Pin a Thought shortcut.",
+                "Say the phrase you want, like “Pin it”, three times when asked.",
+                "Now just say “Pin it”, no “Hey Siri” needed, then “Batteries at Tesco”.",
             ])
         }
         .navigationTitle("Capture anywhere")
@@ -436,6 +464,7 @@ struct DiagnosticsView: View {
     @Environment(LocationEngine.self) private var engine
     @State private var entries = Diagnostics.recent()
     @State private var notifications: UNAuthorizationStatus = .notDetermined
+    @State private var quiet: String?
 
     var body: some View {
         List {
@@ -444,6 +473,7 @@ struct DiagnosticsView: View {
                 LabeledContent("Widgets & Share Sheet", value: AppGroup.isShared ? "Shared" : "Off (no App Group)")
                 LabeledContent("Location", value: locationText)
                 LabeledContent("Notifications", value: notificationText)
+                LabeledContent("Arrival sound", value: quiet == nil ? "On" : "May be silent")
                 LabeledContent("Places armed", value: "\(engine.regions.count) of 20")
             }
             Section {
@@ -492,7 +522,10 @@ struct DiagnosticsView: View {
         }
         .navigationTitle("Diagnostics")
         .refreshable { entries = Diagnostics.recent() }
-        .task { notifications = await NotificationManager.authorizationStatus() }
+        .task {
+            notifications = await NotificationManager.authorizationStatus()
+            quiet = await NotificationManager.quietReason()
+        }
     }
 
     private var storeText: String {
@@ -521,7 +554,7 @@ struct DiagnosticsView: View {
     }
 
     private var report: String {
-        var lines = ["Pinscape diagnostics", "Store: \(storeText)", "Location: \(locationText)", "Notifications: \(notificationText)", "Places armed: \(engine.regions.count)", ""]
+        var lines = ["Pinscape diagnostics", "Store: \(storeText)", "Location: \(locationText)", "Notifications: \(notificationText)", "Arrival sound: \(quiet ?? "On")", "Places armed: \(engine.regions.count)", ""]
         let formatter = ISO8601DateFormatter()
         for entry in entries {
             let times = (entry.times ?? 1) > 1 ? "  ×\(entry.times ?? 1)" : ""

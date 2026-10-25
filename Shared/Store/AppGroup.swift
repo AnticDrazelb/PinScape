@@ -81,9 +81,6 @@ enum AppGroup {
 }
 
 enum SharedKeys {
-    static let isPro = "isPro"
-    static let hasStickerPack = "hasStickerPack"
-    static let proExpiresAt = "proExpiresAt"
     static let needsReplan = "needsReplan"
     static let pendingRoute = "pendingRoute"
     static let plannedRegions = "plannedRegions"
@@ -93,6 +90,7 @@ enum SharedKeys {
     static let shakeToUndo = "shakeToUndo"
     static let everyVisitRestHours = "everyVisitRestHours"
     static let confirmationSound = "confirmationSound"
+    static let arrivalChime = "arrivalChime"
     static let hasOnboarded = "hasOnboarded"
     static let lastLatitude = "lastLatitude"
     static let lastLongitude = "lastLongitude"
@@ -118,6 +116,12 @@ enum PinscapeSettings {
         set { AppGroup.defaults.set(newValue, forKey: SharedKeys.confirmationSound) }
     }
 
+    /// Arrivals play Pinscape's own chime rather than the iPhone's standard notification sound.
+    static var arrivalChime: Bool {
+        get { AppGroup.defaults.object(forKey: SharedKeys.arrivalChime) as? Bool ?? true }
+        set { AppGroup.defaults.set(newValue, forKey: SharedKeys.arrivalChime) }
+    }
+
     /// Hours an every-visit pin rests after surfacing.
     static var everyVisitRestHours: Double {
         get { AppGroup.defaults.object(forKey: SharedKeys.everyVisitRestHours) as? Double ?? SurfacingPolicy.defaultRest / 3600 }
@@ -138,16 +142,3 @@ enum PinscapeSettings {
     }
 }
 
-/// What the free tier includes.
-enum PinscapePlan {
-    static let freeActivePins = 10
-    static let freeSavedPlaces = 1
-
-    static var isPro: Bool {
-        PinStore.isDemoPro || Entitlements.cachedIsPro
-    }
-
-    static var hasStickers: Bool {
-        isPro || AppGroup.defaults.bool(forKey: SharedKeys.hasStickerPack)
-    }
-}

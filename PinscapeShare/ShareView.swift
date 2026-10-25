@@ -81,11 +81,6 @@ struct ShareView: View {
             } message: {
                 Text(model.errorMessage ?? "")
             }
-            .alert("Free pins are full", isPresented: Binding(get: { model.limitReached }, set: { _ in })) {
-                Button("OK", action: close)
-            } message: {
-                Text("Open Pinscape to tick some off or go Pro for unlimited pins.")
-            }
         }
         .tint(Theme.accent)
     }

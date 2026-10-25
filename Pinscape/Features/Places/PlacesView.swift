@@ -6,11 +6,9 @@ import SwiftUI
 struct PlacesView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @Environment(ProStore.self) private var store
     @Query(sort: \SavedPlace.createdAt) private var places: [SavedPlace]
     @Query(filter: #Predicate<Pin> { $0.completedAt == nil }) private var pins: [Pin]
     @State private var editing: EditorRoute?
-    @State private var paywall: PaywallReason?
 
     enum EditorRoute: Identifiable {
         case new(SavedPlaceKind)
@@ -38,14 +36,14 @@ struct PlacesView: View {
                     }
                     .onDelete { delete(items(.place), at: $0) }
                     Button {
-                        add(.place)
+                        editing = .new(.place)
                     } label: {
                         Label("Add a place", systemImage: "plus.circle.fill")
                     }
                 } header: {
                     Text("Places")
                 } footer: {
-                    Text(placesFooter)
+                    Text("Say “near gym” or “at Mum's” and Pinscape knows where you mean.")
                 }
 
                 Section {
@@ -55,15 +53,12 @@ struct PlacesView: View {
                     }
                     .onDelete { delete(items(.group), at: $0) }
                     Button {
-                        add(.group)
+                        editing = .new(.group)
                     } label: {
                         Label("New group", systemImage: "square.stack.3d.up.fill")
                     }
                 } header: {
-                    HStack {
-                        Text("Groups")
-                        if !store.isPro { ProBadge() }
-                    }
+                    Text("Groups")
                 } footer: {
                     Text("One name for several shops: “Supermarkets” fires at Tesco, Aldi or Lidl.")
                 }
@@ -75,15 +70,12 @@ struct PlacesView: View {
                     }
                     .onDelete { delete(items(.sticker), at: $0) }
                     Button {
-                        add(.sticker)
+                        editing = .new(.sticker)
                     } label: {
                         Label("New sticker", systemImage: "wave.3.right.circle.fill")
                     }
                 } header: {
-                    HStack {
-                        Text("NFC stickers")
-                        if !store.hasStickers { ProBadge() }
-                    }
+                    Text("NFC stickers")
                 } footer: {
                     Text("Stick one on the pantry door or your desk. Tap it with your iPhone to see what you left there.")
                 }
@@ -103,32 +95,11 @@ struct PlacesView: View {
                     PlaceEditorView(place: place, kind: place.kind)
                 }
             }
-            .sheet(item: $paywall) { reason in
-                PaywallView(reason: reason)
-            }
         }
-    }
-
-    private var placesFooter: String {
-        let base = "Say “near gym” or “at Mum's” and Pinscape knows where you mean."
-        return store.isPro ? base : base + " Free includes \(PinscapePlan.freeSavedPlaces) place."
     }
 
     private func count(for place: SavedPlace) -> Int {
         pins.filter { $0.place.savedPlaceID == place.id }.count
-    }
-
-    private func add(_ kind: SavedPlaceKind) {
-        switch kind {
-        case .place where !store.isPro && items(.place).count >= PinscapePlan.freeSavedPlaces:
-            paywall = .placeLimit
-        case .group where !store.isPro:
-            paywall = .groups
-        case .sticker where !store.hasStickers:
-            paywall = .stickers
-        default:
-            editing = .new(kind)
-        }
     }
 
     private func delete(_ list: [SavedPlace], at offsets: IndexSet) {
@@ -176,13 +147,3 @@ struct PlaceRow: View {
     }
 }
 
-struct ProBadge: View {
-    var body: some View {
-        Text("PRO")
-            .font(.caption2.weight(.heavy))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Theme.gradient, in: Capsule())
-    }
-}

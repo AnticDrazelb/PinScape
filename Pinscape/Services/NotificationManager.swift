@@ -9,6 +9,11 @@ enum NotificationManager {
     static let laterAction = "PIN_LATER"
     static let tripCategory = "TRIP_NUDGE"
 
+    /// Pinscape's own arrival chime (Resources/Sounds/Arrival.wav), or the iPhone's standard sound.
+    static var arrivalSound: UNNotificationSound {
+        PinscapeSettings.arrivalChime ? UNNotificationSound(named: UNNotificationSoundName("Arrival.wav")) : .default
+    }
+
     static func registerCategories() {
         let done = UNNotificationAction(identifier: doneAction, title: "Done", options: [], icon: UNNotificationActionIcon(systemImageName: "checkmark.circle"))
         let later = UNNotificationAction(identifier: laterAction, title: "Next visit", options: [], icon: UNNotificationActionIcon(systemImageName: "arrow.uturn.right.circle"))
@@ -37,7 +42,7 @@ enum NotificationManager {
             content.subtitle = "\(pins.count) things you left here"
             content.body = pins.map { "• " + $0.text }.joined(separator: "\n")
         }
-        content.sound = .default
+        content.sound = arrivalSound
         content.categoryIdentifier = arrivalCategory
         content.threadIdentifier = visit.placeKey
         content.interruptionLevel = .timeSensitive
@@ -55,8 +60,51 @@ enum NotificationManager {
         }
         do {
             try await UNUserNotificationCenter.current().add(request)
+            if let reason = await quietReason() {
+                Diagnostics.record(.notificationQuiet, reason)
+            }
         } catch {
             Diagnostics.record(.notificationFailed, error.localizedDescription)
+        }
+    }
+
+    /// Why an arrival could come in without a sound, from what iOS reports, or nil if nothing
+    /// Pinscape can see would silence it. (The ring switch and an active Focus aren't visible to apps.)
+    static func quietReason() async -> String? {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .ephemeral:
+            break
+        case .provisional:
+            return "Pinscape's notifications are delivered quietly. Turn on Sounds and the Lock Screen for Pinscape."
+        default:
+            return "Notifications are off for Pinscape."
+        }
+        if settings.soundSetting != .enabled {
+            return "Sounds are off for Pinscape's notifications."
+        }
+        switch settings.timeSensitiveSetting {
+        case .enabled:
+            return nil
+        case .notSupported:
+            return "This copy of Pinscape can't send Time Sensitive alerts, so a Focus silences arrivals unless Pinscape is one of its allowed apps."
+        default:
+            return "Time Sensitive alerts are off for Pinscape, so a Focus can silence arrivals."
+        }
+    }
+
+    /// A sample arrival a few seconds from now: lock the iPhone to hear it as you would at a shop.
+    static func postTestArrival(after delay: TimeInterval = 5) async {
+        let content = UNMutableNotificationContent()
+        content.title = "Pinscape"
+        content.body = "This is how an arrival sounds."
+        content.sound = arrivalSound
+        content.interruptionLevel = .timeSensitive
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
+        do {
+            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "test-arrival", content: content, trigger: trigger))
+        } catch {
+            Diagnostics.record(.notificationFailed, "Test alert: \(error.localizedDescription)")
         }
     }
 

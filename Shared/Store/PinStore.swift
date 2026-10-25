@@ -16,8 +16,6 @@ enum StoreHealth: Equatable {
 /// and readable after first unlock, which lets a geofence wake Pinscape while the phone is locked.
 enum PinStore {
     static let isDemo: Bool = ProcessInfo.processInfo.arguments.contains("-PinscapeDemo")
-    /// Demo data as a Pro user, unless launched with `-PinscapeFree YES` to show the free tier.
-    static let isDemoPro: Bool = isDemo && !ProcessInfo.processInfo.arguments.contains("-PinscapeFree")
 
     static let schema = Schema([Pin.self, SavedPlace.self])
 
@@ -210,11 +208,6 @@ enum PinActions {
     static func fetchSavedPlaces(in context: ModelContext) throws -> [SavedPlace] {
         let descriptor = FetchDescriptor<SavedPlace>(sortBy: [SortDescriptor(\SavedPlace.createdAt)])
         return try context.fetch(descriptor)
-    }
-
-    /// Whether the free tier allows one more active pin.
-    static var canAddPin: Bool {
-        PinscapePlan.isPro || activePinCount() < PinscapePlan.freeActivePins
     }
 
     /// Saves a new pin. Throws rather than returning a pin that only exists in memory.

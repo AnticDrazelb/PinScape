@@ -16,6 +16,7 @@ enum Diagnostics {
         case arrival
         case arrivalDeferred
         case notificationFailed
+        case notificationQuiet
         case notificationsOff
         case liveActivityFailed
 
@@ -32,6 +33,7 @@ enum Diagnostics {
             case .arrival: "Arrived at a pinned place"
             case .arrivalDeferred: "Arrival not recorded yet"
             case .notificationFailed: "Notification failed"
+            case .notificationQuiet: "Arrival alert may have been silent"
             case .notificationsOff: "Arrived, but notifications are off"
             case .liveActivityFailed: "Live Activity didn't start"
             }

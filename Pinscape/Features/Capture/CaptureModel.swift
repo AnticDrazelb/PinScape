@@ -12,8 +12,6 @@ final class CaptureModel {
 
     enum SaveOutcome: Equatable {
         case saved
-        /// The free tier is full.
-        case needsPro
         /// Nothing was stored; `saveError` says why.
         case failed(String)
         /// No settled place or no thought yet.
@@ -47,8 +45,6 @@ final class CaptureModel {
     private(set) var isAutoSaving = false
     /// Set when saving failed. The pin was not stored.
     private(set) var saveError: String? = nil
-    /// Auto-save found the free tier full; the screen hands over to the paywall.
-    private(set) var hitPinLimit = false
 
     private var storedAmbient = false
     /// Surface on every visit. Once you flip it, the words you say stop overriding it.
@@ -235,9 +231,7 @@ final class CaptureModel {
             guard let self, !Task.isCancelled else { return }
             self.isAutoSaving = false
             guard self.canSave else { return }
-            if self.save() == .needsPro {
-                self.hitPinLimit = true
-            }
+            self.save()
         }
     }
 
@@ -254,7 +248,6 @@ final class CaptureModel {
     func save() -> SaveOutcome {
         cancelAutoSave()
         guard canSave, let place else { return .notReady }
-        guard PinActions.canAddPin else { return .needsPro }
         speech.cancel()
         do {
             let pin = try PinActions.add(text: note, place: place, isAmbient: isAmbient, capturedByVoice: usedVoice, source: usedVoice ? .voice : source)
