@@ -52,7 +52,7 @@ final class GeofencePlannerTests: XCTestCase {
 
     func testNothingLeftOutIsInsideTheBoundary() {
         var generator = SystemRandomNumberGenerator()
-        for _ in 0..<50 {
+        for _ in 0..<200 {
             let keys = ["brand:tesco", "brand:boots", "brand:aldi", "category:pharmacy", "spot:bench"]
             let candidates = (0..<40).map { _ in
                 candidate(keys.randomElement(using: &generator)!, north: Double.random(in: -15_000...15_000, using: &generator))
@@ -65,7 +65,9 @@ final class GeofencePlannerTests: XCTestCase {
             let merged = { (left: RegionCandidate) in plan.regions.contains { $0.candidate.key == left.key && $0.candidate.center.distance(to: left.center) < 30 } }
             for left in candidates where !watched.contains(GeofencePlanner.regionID(for: left)) && !merged(left) {
                 let edge = GeofencePlanner.edgeDistance(from: london, to: left)
-                XCTAssertGreaterThanOrEqual(edge + 1, boundary, "an unwatched place must lie beyond the boundary")
+                // Duplicates within 30 m merge into one region at the first one's position, so a raw
+                // candidate can sit up to 30 m nearer than the region it became.
+                XCTAssertGreaterThanOrEqual(edge + 31, boundary, "an unwatched place must lie beyond the boundary")
             }
             for key in Set(candidates.map(\.key)) {
                 XCTAssertTrue(plan.regions.contains { $0.candidate.key == key } || plan.regions.count == GeofencePlanner.regionLimit - 1, "every place keeps at least its nearest branch")
